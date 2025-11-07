@@ -1,50 +1,52 @@
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  let added = 0;
 
   document.querySelectorAll('a[href^="/c/"]').forEach((el) => {
     if (el.dataset.timestampAdded) return;
 
+    // find fiber and conversation
     const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
     if (!fiberKey) return;
 
     let fiber = el[fiberKey];
     let depth = 0;
     let conversation = null;
-
     while (fiber && depth < 25) {
       const props = fiber.memoizedProps;
-      if (props?.conversation && props.conversation?.create_time) {
+      if (props?.conversation?.create_time) {
         conversation = props.conversation;
         break;
       }
       fiber = fiber.return;
       depth++;
     }
-
     if (!conversation?.create_time) return;
 
-    const formatted = new Date(conversation.create_time).toLocaleString();
+    const formatted = new Date(conversation.create_time)
+      .toLocaleString()
+      .replace(",", "");
 
-    // --- create a container for stacked layout ---
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = `
+    /**
+     * dont move or wrap React-owned nodes
+     * @summary docs/note.md
+     */
+    const titleEl = el.querySelector(".truncate");
+    if (!titleEl) return;
+
+    const container = document.createElement("div");
+    container.className = "timestamp-stack-container";
+    container.style.cssText = `
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       line-height: 1.2;
+      width: 100%;
+      pointer-events: none;
     `;
 
-    // move existing title inside wrapper
-    const titleEl = el.querySelector(".truncate");
-    if (!titleEl) return;
-
-    // clone to avoid breaking fiber references (React can re-render otherwise)
-    const clonedTitle = titleEl.cloneNode(true);
-
-    // create timestamp element
     const timestampEl = document.createElement("div");
-    timestampEl.textContent = formatted.replace(',', '');
+    timestampEl.textContent = formatted;
     timestampEl.title = new Date(conversation.update_time).toLocaleString();
     timestampEl.style.cssText = `
       font-size: 10px;
@@ -54,34 +56,32 @@ function addSidebarTimestampsFiber() {
       opacity: 0.75;
     `;
 
-    // append both elements to wrapper
-    wrapper.appendChild(clonedTitle);
-    wrapper.appendChild(timestampEl);
+    el.appendChild(container);
+    container.appendChild(timestampEl);
 
-    // replace original title container with our stacked wrapper
-    titleEl.replaceWith(wrapper);
+    el.style.paddingBottom = "15px";
+    container.style.position = "absolute";
+    container.style.bottom = "4px";
+    container.style.left = "10px";
 
     el.dataset.timestampAdded = "true";
-    added++;
   });
 }
 
-function waitForSidebarAndApplyFiber() {
+function observeSidebar() {
   const ready = document.querySelector('a[href^="/c/"]');
-  if (ready) {
-    addSidebarTimestampsFiber();
+  if (!ready) return setTimeout(observeSidebar, 800);
 
-    const historyRoot = document.querySelector("#history") || document.body;
-    const observer = new MutationObserver(() => addSidebarTimestampsFiber());
-    observer.observe(historyRoot, { childList: true, subtree: true });
-  } else {
-    setTimeout(waitForSidebarAndApplyFiber, 800);
-  }
+  addSidebarTimestampsFiber();
+
+  const root = document.querySelector("#history") || document.body;
+  let t;
+  const debounced = () => {
+    clearTimeout(t);
+    t = setTimeout(addSidebarTimestampsFiber, 300);
+  };
+  new MutationObserver(debounced).observe(root, { childList: true, subtree: true });
 }
 
-// Wait 2s for initial hydration, then check every 4s for re-mounts
-setTimeout(() => {
-  waitForSidebarAndApplyFiber();
-  setInterval(waitForSidebarAndApplyFiber, 4000);
-}, 2000);
+setTimeout(observeSidebar, 2000);
 
