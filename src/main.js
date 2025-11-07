@@ -1,7 +1,12 @@
+/**
+ * dont move or wrap React-owned nodes
+ * @summary docs/note.md
+ */
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const links = document.querySelectorAll('a[href^="/c/"]');
 
-  document.querySelectorAll('a[href^="/c/"]').forEach((el) => {
+  links.forEach((el) => {
     if (el.dataset.timestampAdded) return;
 
     // find fiber and conversation
@@ -26,62 +31,44 @@ function addSidebarTimestampsFiber() {
       .toLocaleString()
       .replace(",", "");
 
-    /**
-     * dont move or wrap React-owned nodes
-     * @summary docs/note.md
-     */
-    const titleEl = el.querySelector(".truncate");
-    if (!titleEl) return;
-
     const container = document.createElement("div");
     container.className = "timestamp-stack-container";
     container.style.cssText = `
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      line-height: 1.2;
-      width: 100%;
-      pointer-events: none;
-    `;
-
-    const timestampEl = document.createElement("div");
-    timestampEl.textContent = formatted;
-    timestampEl.title = new Date(conversation.update_time).toLocaleString();
-    timestampEl.style.cssText = `
+      position: absolute;
+      bottom: 4px;
+      left: 10px;
       font-size: 10px;
       color: ${isDark ? "#e3e3e3" : "#555"};
-      margin-top: 2px;
       font-family: ui-monospace,'SF Mono',Monaco,monospace;
       opacity: 0.75;
+      pointer-events: none;
     `;
+    container.textContent = formatted;
 
-    el.appendChild(container);
-    container.appendChild(timestampEl);
-
+    el.style.position = "relative";
     el.style.paddingBottom = "15px";
-    container.style.position = "absolute";
-    container.style.bottom = "4px";
-    container.style.left = "10px";
+    el.appendChild(container);
 
     el.dataset.timestampAdded = "true";
   });
 }
 
-function observeSidebar() {
-  const ready = document.querySelector('a[href^="/c/"]');
-  if (!ready) return setTimeout(observeSidebar, 800);
+function startRehydrationLoop() {
+  let lastCount = 0;
+  setInterval(() => {
+    const chatLinks = document.querySelectorAll('a[href^="/c/"]');
+    const currentCount = chatLinks.length;
 
-  addSidebarTimestampsFiber();
-
-  const root = document.querySelector("#history") || document.body;
-  let t;
-  const debounced = () => {
-    clearTimeout(t);
-    t = setTimeout(addSidebarTimestampsFiber, 300);
-  };
-  new MutationObserver(debounced).observe(root, { childList: true, subtree: true });
+    if (currentCount !== lastCount) {
+      // console.log(
+      //   `[Timestamp] sidebar count changed (${lastCount} → ${currentCount}) — refreshing`
+      // );
+      lastCount = currentCount;
+      addSidebarTimestampsFiber();
+    } else {
+      addSidebarTimestampsFiber();
+    }
+  }, 1500);
 }
 
-setTimeout(observeSidebar, 2000);
-
+setTimeout(startRehydrationLoop, 2000);
