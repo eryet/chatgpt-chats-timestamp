@@ -64,8 +64,6 @@ function addSidebarTimestampsFiber() {
     el.dataset.timestampAdded = "true";
     added++;
   });
-
-  if (added > 0) console.log(`[Sidebar Timestamps] Added ${added} timestamps (stacked layout).`);
 }
 
 function waitForSidebarAndApplyFiber() {
@@ -76,8 +74,6 @@ function waitForSidebarAndApplyFiber() {
     const historyRoot = document.querySelector("#history") || document.body;
     const observer = new MutationObserver(() => addSidebarTimestampsFiber());
     observer.observe(historyRoot, { childList: true, subtree: true });
-
-    console.log("[Sidebar Timestamps] Observer active (below-title mode).");
   } else {
     setTimeout(waitForSidebarAndApplyFiber, 800);
   }
