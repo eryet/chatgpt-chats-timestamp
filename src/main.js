@@ -1,7 +1,3 @@
-/**
- * dont move or wrap React-owned nodes
- * @summary docs/note.md
- */
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const links = document.querySelectorAll('a[href^="/c/"]');
