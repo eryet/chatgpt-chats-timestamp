@@ -3,9 +3,8 @@
 
 A lightweight Chrome extension that displays creation timestamps for your ChatGPT conversations in the sidebar.
 
-## Status
-
-**Currently under review by Chrome Web Store.**
+<a title="Users" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/users/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
+<a title="Version" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/v/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
 
 ## Installation (Manual)
 
