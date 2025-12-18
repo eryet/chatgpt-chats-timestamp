@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Timestamp Settings</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        width: 280px;
+        padding: 16px;
+        background: #ffffff;
+        color: #1f2937;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .header span {
+        font-size: 18px;
+      }
+      .header h1 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+      }
+      .setting-group {
+        margin-bottom: 14px;
+      }
+      .setting-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: #6b7280;
+      }
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+        cursor: pointer;
+        color: #374151;
+      }
+      select:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+      }
+      .toggle-label {
+        font-size: 13px;
+        color: #374151;
+      }
+      .toggle-switch {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #d1d5db;
+        transition: 0.2s;
+        border-radius: 22px;
+      }
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.2s;
+        border-radius: 50%;
+      }
+      .toggle-switch input:checked + .toggle-slider {
+        background-color: #10a37f;
+      }
+      .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(18px);
+      }
+      .preview {
+        margin-top: 12px;
+        padding: 10px;
+        background: #f9fafb;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+      }
+      .preview-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+      }
+      .preview-text {
+        font-family: ui-monospace, "SF Mono", Monaco, monospace;
+        font-size: 12px;
+        color: #374151;
+      }
+      .preview-secondary {
+        font-family: ui-monospace, "SF Mono", Monaco, monospace;
+        font-size: 11px;
+        color: #10a37f;
+        margin-top: 4px;
+      }
+      .footer {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .reset-btn {
+        background: none;
+        border: none;
+        color: #6b7280;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 4px 0;
+      }
+      .reset-btn:hover {
+        color: #374151;
+        text-decoration: underline;
+      }
+      .info-text {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 12px;
+        text-align: center;
+      }
+      .status {
+        padding: 4px 8px;
+        background: #10a37f;
+        color: white;
+        border-radius: 4px;
+        font-size: 11px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .status.show {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <span>⏱️</span>
+      <h1>Timestamp Settings</h1>
+    </div>
+
+    <div class="setting-group">
+      <label class="setting-label" for="dateFormat">Date & Time Format</label>
+      <select id="dateFormat">
+        <option value="locale">System Locale</option>
+        <option value="iso">ISO (2024-12-18 14:30:00)</option>
+        <option value="us">US (12/18/2024 2:30 PM)</option>
+        <option value="eu">EU (18/12/2024 14:30)</option>
+        <option value="uk">UK (18/12/2024 2:30 PM)</option>
+        <option value="relative">Relative (2h ago)</option>
+        <option value="short">Short (Dec 18, 2:30 PM)</option>
+        <option value="dateOnly">Date Only (Dec 18, 2024)</option>
+        <option value="timeOnly">Time Only (2:30 PM)</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label class="setting-label" for="displayMode">Display</label>
+      <select id="displayMode">
+        <option value="created">Created time</option>
+        <option value="updated">Updated time</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <div class="toggle-row">
+        <span class="toggle-label">Show other on hover</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="hoverEnabled" checked />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="preview">
+      <div class="preview-label">Preview</div>
+      <div class="preview-text" id="previewPrimary">—</div>
+      <div class="preview-secondary" id="previewSecondary"></div>
+    </div>
+
+    <div class="footer">
+      <button class="reset-btn" id="resetBtn">Restore defaults</button>
+      <div class="status" id="status">Saved ✓</div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
