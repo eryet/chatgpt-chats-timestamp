@@ -4,6 +4,7 @@ let userSettings = {
   displayMode: "created",
   hoverEnabled: true,
   chatTimestampEnabled: true,
+  chatTimestampPosition: "center",
 };
 
 // Listen for settings updates from bridge script (runs in isolated world)
@@ -167,9 +168,17 @@ function addSidebarTimestampsFiber() {
 }
 
 function addChatTimestamps() {
-  const { chatTimestampEnabled, dateFormat } = userSettings;
+  const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
+    userSettings;
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const timestampColor = isDark ? "#ccc" : "#555";
+  const timestampColor = isDark ? "#afafaf" : "#4B5563";
+
+  const justifyContent =
+    chatTimestampPosition === "left"
+      ? "flex-start"
+      : chatTimestampPosition === "right"
+      ? "flex-end"
+      : "center";
 
   document.querySelectorAll("div[data-message-id]").forEach((div) => {
     let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
@@ -251,10 +260,11 @@ function addChatTimestamps() {
       font-size: 11px;
       color: ${timestampColor};
       font-weight: 600;
-      margin-right: 8px;
       margin-bottom: 4px;
-      display: inline-flex;
+      display: flex;
+      width: 100%;
       align-items: baseline;
+      justify-content: ${justifyContent};
       gap: 6px;
       font-family: ui-monospace, 'SF Mono', Monaco, monospace;
     `;

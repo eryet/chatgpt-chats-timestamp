@@ -2,6 +2,9 @@ const formatSelect = document.getElementById("dateFormat");
 const displayModeSelect = document.getElementById("displayMode");
 const hoverEnabledCheckbox = document.getElementById("hoverEnabled");
 const chatTimestampCheckbox = document.getElementById("chatTimestampEnabled");
+const chatTimestampPositionSelect = document.getElementById(
+  "chatTimestampPosition"
+);
 const previewPrimary = document.getElementById("previewPrimary");
 const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
@@ -13,6 +16,7 @@ const defaultSettings = {
   displayMode: "created",
   hoverEnabled: true,
   chatTimestampEnabled: true,
+  chatTimestampPosition: "center",
 };
 
 // formatDate and getRelativeTime are loaded from utils.js
@@ -56,6 +60,7 @@ function saveSettings() {
     displayMode: displayModeSelect.value,
     hoverEnabled: hoverEnabledCheckbox.checked,
     chatTimestampEnabled: chatTimestampCheckbox.checked,
+    chatTimestampPosition: chatTimestampPositionSelect.value,
   };
   chrome.storage.sync.set(settings, () => {
     updatePreview();
@@ -68,6 +73,7 @@ function applySettings(settings) {
   displayModeSelect.value = settings.displayMode;
   hoverEnabledCheckbox.checked = settings.hoverEnabled;
   chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
+  chatTimestampPositionSelect.value = settings.chatTimestampPosition;
   updatePreview();
 }
 
@@ -81,6 +87,7 @@ formatSelect.addEventListener("change", saveSettings);
 displayModeSelect.addEventListener("change", saveSettings);
 hoverEnabledCheckbox.addEventListener("change", saveSettings);
 chatTimestampCheckbox.addEventListener("change", saveSettings);
+chatTimestampPositionSelect.addEventListener("change", saveSettings);
 
 // Reset to defaults
 resetBtn.addEventListener("click", () => {

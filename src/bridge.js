@@ -6,6 +6,7 @@ const defaultSettings = {
   displayMode: "created",
   hoverEnabled: true,
   chatTimestampEnabled: true,
+  chatTimestampPosition: "center",
 };
 
 function sendSettingsToPage(settings) {
