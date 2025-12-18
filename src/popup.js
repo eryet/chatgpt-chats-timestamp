@@ -1,6 +1,7 @@
 const formatSelect = document.getElementById("dateFormat");
 const displayModeSelect = document.getElementById("displayMode");
 const hoverEnabledCheckbox = document.getElementById("hoverEnabled");
+const chatTimestampCheckbox = document.getElementById("chatTimestampEnabled");
 const previewPrimary = document.getElementById("previewPrimary");
 const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
@@ -11,91 +12,10 @@ const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
   hoverEnabled: true,
+  chatTimestampEnabled: true,
 };
 
-// Format a date according to the selected format
-function formatDate(date, format) {
-  switch (format) {
-    case "iso":
-      return date.toISOString().slice(0, 19).replace("T", " ");
-    case "us":
-      return date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-    case "eu":
-      return date.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
-    case "uk":
-      return date.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-    case "relative":
-      return getRelativeTime(date);
-    case "short":
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    case "dateOnly":
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    case "timeOnly":
-      return date.toLocaleString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-    case "locale":
-    default:
-      return date.toLocaleString().replace(",", "");
-  }
-}
-
-function getRelativeTime(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHr / 24);
-  const diffWeek = Math.floor(diffDay / 7);
-  const diffMonth = Math.floor(diffDay / 30);
-  const diffYear = Math.floor(diffDay / 365);
-
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffWeek < 4) return `${diffWeek}w ago`;
-  if (diffMonth < 12) return `${diffMonth}mo ago`;
-  return `${diffYear}y ago`;
-}
+// formatDate and getRelativeTime are loaded from utils.js
 
 function updatePreview() {
   const format = formatSelect.value;
@@ -135,6 +55,7 @@ function saveSettings() {
     dateFormat: formatSelect.value,
     displayMode: displayModeSelect.value,
     hoverEnabled: hoverEnabledCheckbox.checked,
+    chatTimestampEnabled: chatTimestampCheckbox.checked,
   };
   chrome.storage.sync.set(settings, () => {
     updatePreview();
@@ -146,6 +67,7 @@ function applySettings(settings) {
   formatSelect.value = settings.dateFormat;
   displayModeSelect.value = settings.displayMode;
   hoverEnabledCheckbox.checked = settings.hoverEnabled;
+  chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
   updatePreview();
 }
 
@@ -158,6 +80,7 @@ chrome.storage.sync.get(defaultSettings, (result) => {
 formatSelect.addEventListener("change", saveSettings);
 displayModeSelect.addEventListener("change", saveSettings);
 hoverEnabledCheckbox.addEventListener("change", saveSettings);
+chatTimestampCheckbox.addEventListener("change", saveSettings);
 
 // Reset to defaults
 resetBtn.addEventListener("click", () => {

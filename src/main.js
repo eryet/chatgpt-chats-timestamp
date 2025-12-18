@@ -3,6 +3,7 @@ let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
   hoverEnabled: true,
+  chatTimestampEnabled: true,
 };
 
 // Listen for settings updates from bridge script (runs in isolated world)
@@ -10,103 +11,30 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
-    addSidebarTimestampsFiber(); // Refresh with new settings
+
+    // Clear chat timestamp marks when settings change to force re-render
+    document.querySelectorAll("div[data-message-id]").forEach((div) => {
+      if (div.dataset.timestampAdded) {
+        const existingTimestamp = div.querySelector(".chatgpt-timestamp");
+        if (existingTimestamp) {
+          existingTimestamp.remove();
+        }
+        delete div.dataset.timestampAdded;
+      }
+    });
+
+    addSidebarTimestampsFiber(); // Refresh sidebar with new settings
+    addChatTimestamps(); // Refresh chat messages with new settings
   }
 });
 
-function getRelativeTime(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHr / 24);
-  const diffWeek = Math.floor(diffDay / 7);
-  const diffMonth = Math.floor(diffDay / 30);
-  const diffYear = Math.floor(diffDay / 365);
-
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffWeek < 4) return `${diffWeek}w ago`;
-  if (diffMonth < 12) return `${diffMonth}mo ago`;
-  return `${diffYear}y ago`;
-}
+// formatDate and getRelativeTime are loaded from utils.js
 
 function formatTimestamp(value) {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-
-  switch (userSettings.dateFormat) {
-    case "iso":
-      return d.toISOString().slice(0, 19).replace("T", " ");
-
-    case "us":
-      return d.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-
-    case "eu":
-      return d.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
-
-    case "uk":
-      return d.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-
-    case "relative":
-      return getRelativeTime(d);
-
-    case "short":
-      return d.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-
-    case "dateOnly":
-      return d.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-
-    case "timeOnly":
-      return d.toLocaleString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-
-    case "locale":
-    default:
-      return d.toLocaleString().replace(",", "");
-  }
+  return formatDate(d, userSettings.dateFormat);
 }
 
 function setHoverExpanded(el, expanded) {
@@ -238,6 +166,108 @@ function addSidebarTimestampsFiber() {
   });
 }
 
+function addChatTimestamps() {
+  const { chatTimestampEnabled, dateFormat } = userSettings;
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const timestampColor = isDark ? "#ccc" : "#555";
+
+  document.querySelectorAll("div[data-message-id]").forEach((div) => {
+    let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
+
+    // If chat timestamps are disabled, remove any existing ones and clear marker.
+    if (!chatTimestampEnabled) {
+      if (timestampEl) timestampEl.remove();
+      delete div.dataset.timestampAdded;
+      return;
+    }
+
+    // Skip if already processed and has timestamp.
+    if (div.dataset.timestampAdded && timestampEl) return;
+
+    // Find fiber and traverse upwards to locate message timestamp.
+    const fiberKey = Object.keys(div).find((k) =>
+      k.startsWith("__reactFiber$")
+    );
+    if (!fiberKey) return;
+
+    let fiber = div[fiberKey];
+    let depth = 0;
+    let timestampSeconds = null;
+    let turnIndex = null;
+    while (fiber && depth < 150) {
+      const props = fiber.memoizedProps;
+
+      if (turnIndex == null) {
+        const candidateTurnIndex = props?.turnIndex ?? null;
+        if (candidateTurnIndex != null) turnIndex = candidateTurnIndex;
+      }
+
+      if (timestampSeconds == null) {
+        const messages = props?.messages;
+        const candidate = messages?.[0]?.create_time;
+        if (candidate != null) timestampSeconds = candidate;
+      }
+
+      if (timestampSeconds != null && turnIndex != null) break;
+      fiber = fiber.return;
+      depth++;
+    }
+    if (!timestampSeconds) return;
+
+    const timestampSecondsNumber = Number(timestampSeconds);
+    if (!Number.isFinite(timestampSecondsNumber)) return;
+    const date = new Date(timestampSecondsNumber * 1000);
+    if (Number.isNaN(date.getTime())) return;
+
+    const formatted = formatDate(date, dateFormat);
+    if (!formatted) return;
+
+    // Double-check that chat timestamps are still enabled before adding.
+    if (!userSettings.chatTimestampEnabled) return;
+
+    if (!timestampEl) {
+      timestampEl = document.createElement("span");
+      timestampEl.className = "chatgpt-timestamp";
+      div.insertBefore(timestampEl, div.firstChild);
+    }
+
+    let indexEl = timestampEl.querySelector(":scope > .chatgpt-turn-index");
+    let timeEl = timestampEl.querySelector(":scope > .chatgpt-turn-time");
+    if (!indexEl || !timeEl) {
+      timestampEl.textContent = "";
+      indexEl = document.createElement("span");
+      indexEl.className = "chatgpt-turn-index";
+      timeEl = document.createElement("span");
+      timeEl.className = "chatgpt-turn-time";
+      timestampEl.append(indexEl, timeEl);
+    }
+
+    const indexText = turnIndex == null ? "" : `#${turnIndex}`;
+    indexEl.textContent = indexText;
+    indexEl.style.display = indexText ? "inline-block" : "none";
+    timeEl.textContent = formatted;
+
+    timestampEl.style.cssText = `
+      font-size: 11px;
+      color: ${timestampColor};
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 4px;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    `;
+    indexEl.style.cssText = `
+      opacity: 0.85;
+      font-weight: 700;
+    `;
+
+    // Mark as processed.
+    div.dataset.timestampAdded = "true";
+  });
+}
+
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
@@ -253,6 +283,9 @@ function startRehydrationLoop() {
     } else {
       addSidebarTimestampsFiber();
     }
+
+    // Also update chat timestamps in the same loop
+    addChatTimestamps();
   }, 1500);
 }
 

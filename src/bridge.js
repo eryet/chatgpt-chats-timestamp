@@ -5,6 +5,7 @@ const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
   hoverEnabled: true,
+  chatTimestampEnabled: true,
 };
 
 function sendSettingsToPage(settings) {
@@ -13,7 +14,7 @@ function sendSettingsToPage(settings) {
       type: "TIMESTAMP_SETTINGS_UPDATE",
       settings: settings,
     },
-    "*"
+    window.location.origin
   );
 }
 
