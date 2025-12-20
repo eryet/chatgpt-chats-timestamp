@@ -21,7 +21,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
         padding-bottom: 12px;
         border-bottom: 1px solid #e5e7eb;
       }
@@ -34,7 +34,7 @@
         color: #111827;
       }
       .setting-group {
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
       .setting-label {
         display: block;
@@ -133,7 +133,7 @@
         margin-top: 4px;
       }
       .footer {
-        margin-top: 14px;
+        margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid #e5e7eb;
         display: flex;
@@ -170,13 +170,64 @@
       .status.show {
         opacity: 1;
       }
+      .scroll-section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+      }
+      .scroll-row {
+        display: flex;
+        gap: 8px;
+      }
+      .scroll-row input {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #374151;
+      }
+      .scroll-row input:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .scroll-btn {
+        padding: 8px 16px;
+        background: #10a37f;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .scroll-btn:hover {
+        background: #0d8a6a;
+      }
+      .scroll-btn:active {
+        background: #0b7a5e;
+      }
+      .scroll-status {
+        font-size: 11px;
+        margin-top: 6px;
+        min-height: 16px;
+        color: #6b7280;
+      }
+      .scroll-status.error {
+        color: #dc2626;
+      }
+      .scroll-status.success {
+        color: #10a37f;
+      }
     </style>
   </head>
   <body>
-    <div class="header">
+    <!-- <div class="header">
       <span>⏱️</span>
       <h1>Timestamp Settings</h1>
-    </div>
+    </div> -->
 
     <div class="setting-group">
       <label class="setting-label" for="dateFormat">Date & Time Format</label>
@@ -236,6 +287,15 @@
       <div class="preview-label">Preview</div>
       <div class="preview-text" id="previewPrimary">—</div>
       <div class="preview-secondary" id="previewSecondary"></div>
+    </div>
+
+    <div class="setting-group scroll-section">
+      <label class="setting-label">Jump to Turn</label>
+      <div class="scroll-row">
+        <input type="number" id="turnIndexInput" min="0" placeholder="#" />
+        <button class="scroll-btn" id="scrollToTurnBtn">Go</button>
+      </div>
+      <div class="scroll-status" id="scrollStatus"></div>
     </div>
 
     <div class="footer">

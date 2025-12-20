@@ -27,9 +27,41 @@ window.addEventListener("message", (event) => {
     addSidebarTimestampsFiber(); // Refresh sidebar with new settings
     addChatTimestamps(); // Refresh chat messages with new settings
   }
+
+  if (event.data?.type === "SCROLL_TO_TURN") {
+    const result = scrollToTurn(event.data.turnIndex);
+    window.postMessage(
+      {
+        type: "SCROLL_TO_TURN_RESULT",
+        result: result,
+      },
+      window.location.origin
+    );
+  }
 });
 
 // formatDate and getRelativeTime are loaded from utils.js
+
+function scrollToTurn(targetTurnIndex) {
+  const turnIndexSpans = document.querySelectorAll(".chatgpt-turn-index");
+
+  for (const span of turnIndexSpans) {
+    const turnText = span.textContent?.trim();
+    if (!turnText) continue;
+
+    const turnIndex = parseInt(turnText.replace("#", ""), 10);
+    if (turnIndex !== targetTurnIndex) continue;
+
+    const messageDiv = span.closest("div[data-message-id]");
+    if (!messageDiv) continue;
+
+    messageDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    return { success: true, message: `Scrolled to turn #${targetTurnIndex}` };
+  }
+
+  return { success: false, message: `Turn #${targetTurnIndex} not found` };
+}
 
 function formatTimestamp(value) {
   if (!value) return "";
