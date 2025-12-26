@@ -40,10 +40,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const responseHandler = (event) => {
       if (event.source !== window) return;
       if (event.data?.type === "SCROLL_TO_TURN_RESULT") {
+        clearTimeout(timeoutId);
         window.removeEventListener("message", responseHandler);
         sendResponse(event.data.result);
       }
     };
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", responseHandler);
+      sendResponse({ success: false, message: "Request timed out" });
+    }, 5000);
+
     window.addEventListener("message", responseHandler);
 
     window.postMessage(

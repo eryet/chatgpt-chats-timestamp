@@ -115,7 +115,7 @@ function showScrollStatus(message, type = "") {
 
 scrollToTurnBtn.addEventListener("click", () => {
   const turnIndex = parseInt(turnIndexInput.value, 10);
-  if (isNaN(turnIndex) || turnIndex < 0) {
+  if (isNaN(turnIndex) || turnIndex <= 0) {
     showScrollStatus("Please enter a valid turn number", "error");
     return;
   }
