@@ -32,3 +32,36 @@ chrome.storage.onChanged.addListener((changes, area) => {
     });
   }
 });
+
+// Listen for scroll-to-turn requests from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "SCROLL_TO_TURN") {
+    // Forward to main.js via window message and wait for response
+    const responseHandler = (event) => {
+      if (event.source !== window) return;
+      if (event.data?.type === "SCROLL_TO_TURN_RESULT") {
+        clearTimeout(timeoutId);
+        window.removeEventListener("message", responseHandler);
+        sendResponse(event.data.result);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", responseHandler);
+      sendResponse({ success: false, message: "Request timed out" });
+    }, 5000);
+
+    window.addEventListener("message", responseHandler);
+
+    window.postMessage(
+      {
+        type: "SCROLL_TO_TURN",
+        turnIndex: message.turnIndex,
+      },
+      window.location.origin
+    );
+
+    // Return true to indicate async response
+    return true;
+  }
+});

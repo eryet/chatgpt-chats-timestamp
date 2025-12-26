@@ -96,3 +96,55 @@ resetBtn.addEventListener("click", () => {
     showStatus();
   });
 });
+
+// Scroll to turn functionality
+const turnIndexInput = document.getElementById("turnIndexInput");
+const scrollToTurnBtn = document.getElementById("scrollToTurnBtn");
+const scrollStatusEl = document.getElementById("scrollStatus");
+
+function showScrollStatus(message, type = "") {
+  scrollStatusEl.textContent = message;
+  scrollStatusEl.className = "scroll-status " + type;
+  if (type === "success") {
+    setTimeout(() => {
+      scrollStatusEl.textContent = "";
+      scrollStatusEl.className = "scroll-status";
+    }, 2000);
+  }
+}
+
+scrollToTurnBtn.addEventListener("click", () => {
+  const turnIndex = parseInt(turnIndexInput.value, 10);
+  if (isNaN(turnIndex) || turnIndex <= 0) {
+    showScrollStatus("Please enter a valid turn number", "error");
+    return;
+  }
+
+  // Send message to content script to scroll
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: "SCROLL_TO_TURN", turnIndex: turnIndex },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            showScrollStatus("Could not connect to page", "error");
+            return;
+          }
+          if (response?.success) {
+            showScrollStatus(`Scrolled to turn #${turnIndex}`, "success");
+          } else {
+            showScrollStatus(response?.message || "Turn not found", "error");
+          }
+        }
+      );
+    }
+  });
+});
+
+// Allow Enter key to trigger scroll
+turnIndexInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    scrollToTurnBtn.click();
+  }
+});
