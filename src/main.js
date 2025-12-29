@@ -103,20 +103,27 @@ function exportCurrentChat(format = "markdown") {
       let depth = 0;
       let messageData = null;
       let turnIndex = null;
+      let contentReferences = [];
 
       while (fiber && depth < 150) {
         const props = fiber.memoizedProps;
 
-        if (turnIndex == null) {
-          const candidateTurnIndex = props?.turnIndex ?? null;
-          if (candidateTurnIndex != null) turnIndex = candidateTurnIndex;
+        // Get turnIndex
+        if (turnIndex == null && props?.turnIndex != null) {
+          turnIndex = props.turnIndex;
         }
 
-        if (!messageData) {
-          const candidate = props?.messages?.[0];
-          if (candidate?.content?.parts) {
-            messageData = candidate;
-          }
+        // Get message data
+        if (!messageData && props?.message?.content?.parts) {
+          messageData = props.message;
+        }
+
+        // Get content_references for citations
+        if (
+          contentReferences.length === 0 &&
+          props?.message?.metadata?.content_references?.length > 0
+        ) {
+          contentReferences = props.message.metadata.content_references;
         }
 
         if (messageData && turnIndex != null) break;
@@ -124,18 +131,21 @@ function exportCurrentChat(format = "markdown") {
         depth++;
       }
 
-      if (messageData) {
-        const role = messageData.author?.role || "unknown";
-        const content = messageData.content?.parts?.join("\n") || "";
-        const timestamp = messageData.create_time
-          ? new Date(messageData.create_time * 1000)
-          : null;
+      if (!messageData) return;
 
+      const role = messageData.author?.role || "unknown";
+      const content = messageData.content?.parts?.join("\n") || "";
+      const timestamp = messageData.create_time
+        ? new Date(messageData.create_time * 1000)
+        : null;
+
+      if (content.trim()) {
         messages.push({
           turnIndex,
           role,
-          content,
+          content: content.trim(),
           timestamp,
+          contentReferences,
         });
       }
     });
@@ -144,26 +154,116 @@ function exportCurrentChat(format = "markdown") {
       return { success: false, message: "Could not extract message content" };
     }
 
-    // Get conversation metadata
+    // Get conversation metadata from sidebar
     let conversationMeta = null;
-    const sidebarLink = document.querySelector('a[href^="/c/"].bg-token');
-    if (sidebarLink) {
-      const fiberKey = Object.keys(sidebarLink).find((k) =>
-        k.startsWith("__reactFiber$")
-      );
-      if (fiberKey) {
-        let fiber = sidebarLink[fiberKey];
-        let depth = 0;
-        while (fiber && depth < 25) {
-          const props = fiber.memoizedProps;
-          if (props?.conversation?.create_time) {
-            conversationMeta = props.conversation;
-            break;
+    const sidebarLinks = document.querySelectorAll('a[href^="/c/"]');
+    const currentPath = window.location.pathname;
+
+    for (const link of sidebarLinks) {
+      if (
+        link.getAttribute("href") === currentPath ||
+        link.classList.contains("bg-token-sidebar-surface-secondary")
+      ) {
+        const fiberKey = Object.keys(link).find((k) =>
+          k.startsWith("__reactFiber$")
+        );
+        if (fiberKey) {
+          let fiber = link[fiberKey];
+          let depth = 0;
+          while (fiber && depth < 25) {
+            const props = fiber.memoizedProps;
+            if (props?.conversation?.create_time) {
+              conversationMeta = props.conversation;
+              break;
+            }
+            fiber = fiber.return;
+            depth++;
           }
-          fiber = fiber.return;
-          depth++;
         }
+        if (conversationMeta) break;
       }
+    }
+
+    // Helper function to process citations in content
+    function processCitations(content, contentReferences, format) {
+      if (!contentReferences || contentReferences.length === 0) {
+        // Remove orphan citation markers
+        return content.replace(
+          /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+          ""
+        );
+      }
+
+      let processedContent = content;
+      const citationMap = new Map();
+
+      // Build citation map from content_references
+      contentReferences.forEach((ref) => {
+        if (!ref || typeof ref !== "object") return;
+
+        const matchedText = ref.matched_text;
+        const alt = ref.alt; // Pre-formatted markdown like "([Title](url))"
+        const safeUrls = ref.safe_urls || [];
+        const type = ref.type;
+
+        // Skip non-citation types
+        if (type === "sources_footnote" || !matchedText || matchedText === " ")
+          return;
+
+        if (matchedText && (safeUrls.length > 0 || alt)) {
+          // Get the first non-utm URL or the first URL
+          const url =
+            safeUrls.find((u) => !u.includes("utm_source")) ||
+            safeUrls[0] ||
+            "";
+
+          // Map the matched_text to citation info
+          citationMap.set(matchedText.toLowerCase(), { url, alt });
+        }
+      });
+
+      if (citationMap.size === 0) {
+        // No valid citations, just clean up markers
+        return processedContent.replace(
+          /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+          ""
+        );
+      }
+
+      // Replace citation markers with proper formatted links
+      // Sort by length descending to match longer patterns first
+      const sortedMarkers = [...citationMap.keys()].sort(
+        (a, b) => b.length - a.length
+      );
+
+      for (const marker of sortedMarkers) {
+        const cite = citationMap.get(marker);
+        // Create case-insensitive regex for this marker
+        const regex = new RegExp(
+          marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "gi"
+        );
+
+        processedContent = processedContent.replace(regex, () => {
+          if (format === "markdown" && cite.alt) {
+            return ` ${cite.alt}`;
+          } else if (format === "plain" && cite.url) {
+            try {
+              const domain = new URL(cite.url).hostname.replace("www.", "");
+              return ` [${domain}]`;
+            } catch {
+              return "";
+            }
+          }
+          return "";
+        });
+      }
+
+      // Clean up any remaining unmatched citation markers
+      return processedContent.replace(
+        /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+        ""
+      );
     }
 
     // Format output based on requested format
@@ -180,10 +280,17 @@ function exportCurrentChat(format = "markdown") {
 
       messages.forEach((msg) => {
         const roleLabel = msg.role === "user" ? "**You**" : "**ChatGPT**";
+        const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` *(${formatDate(msg.timestamp, dateFormat)})*`
           : "";
-        output += `${roleLabel}${timeStr}:\n\n${msg.content}\n\n---\n\n`;
+
+        const processedContent = processCitations(
+          msg.content,
+          msg.contentReferences,
+          "markdown"
+        );
+        output += `### ${turnStr}${roleLabel}${timeStr}\n\n${processedContent}\n\n---\n\n`;
       });
     } else if (format === "plain") {
       output = `${title}\n${"=".repeat(title.length)}\n\n`;
@@ -194,24 +301,32 @@ function exportCurrentChat(format = "markdown") {
 
       messages.forEach((msg) => {
         const roleLabel = msg.role === "user" ? "You" : "ChatGPT";
+        const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` (${formatDate(msg.timestamp, dateFormat)})`
           : "";
-        output += `[${roleLabel}]${timeStr}:\n${msg.content}\n\n`;
+
+        const processedContent = processCitations(
+          msg.content,
+          msg.contentReferences,
+          "plain"
+        );
+        output += `[${turnStr}${roleLabel}]${timeStr}:\n${processedContent}\n\n`;
       });
     } else if (format === "json") {
       const exportData = {
         title,
-        created: conversationMeta
+        created: conversationMeta?.create_time
           ? new Date(conversationMeta.create_time).toISOString()
           : null,
         updated: conversationMeta?.update_time
           ? new Date(conversationMeta.update_time).toISOString()
           : null,
+        messageCount: messages.length,
         messages: messages.map((msg) => ({
           turn: msg.turnIndex,
           role: msg.role,
-          content: msg.content,
+          content: processCitations(msg.content, msg.contentReferences, "json"),
           timestamp: msg.timestamp ? msg.timestamp.toISOString() : null,
         })),
       };
