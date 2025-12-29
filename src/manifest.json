@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ChatGPT Chats Timestamp",
   "version": "1.3",
-  "description": "Adds created timestamps under each ChatGPT sidebar conversation for quick reference.",
+  "description": "Adds created timestamps under each ChatGPT sidebar conversations. See when each chat was created at a glance!",
   "icons": {
     "16": "assets/icon.png",
     "48": "assets/icon.png",
