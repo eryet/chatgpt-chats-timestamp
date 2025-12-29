@@ -1,4 +1,4 @@
-// Global settings cache
+// #region Settings
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
@@ -6,8 +6,9 @@ let userSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
 };
+// #endregion
 
-// Listen for settings updates from bridge script (runs in isolated world)
+// #region Event Listeners
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
@@ -50,9 +51,9 @@ window.addEventListener("message", (event) => {
     );
   }
 });
+// #endregion
 
-// formatDate and getRelativeTime are loaded from utils.js
-
+// #region Scroll
 function scrollToTurn(targetTurnIndex) {
   const turnIndexSpans = document.querySelectorAll(".chatgpt-turn-index");
 
@@ -73,7 +74,9 @@ function scrollToTurn(targetTurnIndex) {
 
   return { success: false, message: `Turn #${targetTurnIndex} not found` };
 }
+// #endregion
 
+// #region Export
 function exportCurrentChat(format = "markdown") {
   try {
     // Find the conversation data from React fiber
@@ -343,7 +346,9 @@ function exportCurrentChat(format = "markdown") {
     return { success: false, message: `Export failed: ${error.message}` };
   }
 }
+// #endregion
 
+// #region Utils
 function formatTimestamp(value) {
   if (!value) return "";
   const d = new Date(value);
@@ -364,7 +369,9 @@ function setHoverExpanded(el, expanded) {
   secondaryEl.style.display = shouldExpand ? "block" : "none";
   el.style.paddingBottom = shouldExpand ? "28px" : "15px";
 }
+// #endregion
 
+// #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const links = document.querySelectorAll('a[href^="/c/"]');
@@ -479,7 +486,9 @@ function addSidebarTimestampsFiber() {
     el.dataset.timestampAdded = "true";
   });
 }
+// #endregion
 
+// #region Chat
 function addChatTimestamps() {
   const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
     userSettings;
@@ -590,7 +599,9 @@ function addChatTimestamps() {
     div.dataset.timestampAdded = "true";
   });
 }
+// #endregion
 
+// #region Init
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
@@ -612,5 +623,5 @@ function startRehydrationLoop() {
   }, 1500);
 }
 
-// Initialize
 setTimeout(startRehydrationLoop, 2000);
+// #endregion
