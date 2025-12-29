@@ -77,7 +77,23 @@
         "decision_source": null,
         "passthrough_tool_names": null
       },
-      "content_references": [],
+      "content_references": [
+        {
+          "matched_text": "",
+          "start_idx": 319,
+          "end_idx": 365,
+          "safe_urls": [""],
+          "refs": [],
+          "alt": "",
+          "prompt_text": null,
+          "type": "grouped_webpages",
+          "items": [""],
+          "fallback_items": null,
+          "status": "done",
+          "error": null,
+          "style": null
+        },
+      ],
       "citations": [],
       "request_id": null,
       "message_type": null,
