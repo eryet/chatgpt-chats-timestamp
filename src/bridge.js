@@ -64,4 +64,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Return true to indicate async response
     return true;
   }
+
+  if (message.type === "EXPORT_CHAT") {
+    // Forward to main.js via window message and wait for response
+    const responseHandler = (event) => {
+      if (event.source !== window) return;
+      if (event.data?.type === "EXPORT_CHAT_RESULT") {
+        clearTimeout(timeoutId);
+        window.removeEventListener("message", responseHandler);
+        sendResponse(event.data.result);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", responseHandler);
+      sendResponse({ success: false, message: "Request timed out" });
+    }, 5000);
+
+    window.addEventListener("message", responseHandler);
+
+    window.postMessage(
+      {
+        type: "EXPORT_CHAT",
+        format: message.format,
+      },
+      window.location.origin
+    );
+
+    // Return true to indicate async response
+    return true;
+  }
 });

@@ -38,6 +38,17 @@ window.addEventListener("message", (event) => {
       window.location.origin
     );
   }
+
+  if (event.data?.type === "EXPORT_CHAT") {
+    const result = exportCurrentChat(event.data.format);
+    window.postMessage(
+      {
+        type: "EXPORT_CHAT_RESULT",
+        result: result,
+      },
+      window.location.origin
+    );
+  }
 });
 
 // formatDate and getRelativeTime are loaded from utils.js
@@ -61,6 +72,161 @@ function scrollToTurn(targetTurnIndex) {
   }
 
   return { success: false, message: `Turn #${targetTurnIndex} not found` };
+}
+
+function exportCurrentChat(format = "markdown") {
+  try {
+    // Find the conversation data from React fiber
+    const mainElement = document.querySelector("main");
+    if (!mainElement) {
+      return { success: false, message: "Could not find chat container" };
+    }
+
+    // Get conversation title
+    const titleElement = document.querySelector("h1");
+    const title = titleElement?.textContent?.trim() || "Untitled Chat";
+
+    // Collect all messages
+    const messageDivs = document.querySelectorAll("div[data-message-id]");
+    if (messageDivs.length === 0) {
+      return { success: false, message: "No messages found in this chat" };
+    }
+
+    const messages = [];
+    messageDivs.forEach((div) => {
+      const fiberKey = Object.keys(div).find((k) =>
+        k.startsWith("__reactFiber$")
+      );
+      if (!fiberKey) return;
+
+      let fiber = div[fiberKey];
+      let depth = 0;
+      let messageData = null;
+      let turnIndex = null;
+
+      while (fiber && depth < 150) {
+        const props = fiber.memoizedProps;
+
+        if (turnIndex == null) {
+          const candidateTurnIndex = props?.turnIndex ?? null;
+          if (candidateTurnIndex != null) turnIndex = candidateTurnIndex;
+        }
+
+        if (!messageData) {
+          const candidate = props?.messages?.[0];
+          if (candidate?.content?.parts) {
+            messageData = candidate;
+          }
+        }
+
+        if (messageData && turnIndex != null) break;
+        fiber = fiber.return;
+        depth++;
+      }
+
+      if (messageData) {
+        const role = messageData.author?.role || "unknown";
+        const content = messageData.content?.parts?.join("\n") || "";
+        const timestamp = messageData.create_time
+          ? new Date(messageData.create_time * 1000)
+          : null;
+
+        messages.push({
+          turnIndex,
+          role,
+          content,
+          timestamp,
+        });
+      }
+    });
+
+    if (messages.length === 0) {
+      return { success: false, message: "Could not extract message content" };
+    }
+
+    // Get conversation metadata
+    let conversationMeta = null;
+    const sidebarLink = document.querySelector('a[href^="/c/"].bg-token');
+    if (sidebarLink) {
+      const fiberKey = Object.keys(sidebarLink).find((k) =>
+        k.startsWith("__reactFiber$")
+      );
+      if (fiberKey) {
+        let fiber = sidebarLink[fiberKey];
+        let depth = 0;
+        while (fiber && depth < 25) {
+          const props = fiber.memoizedProps;
+          if (props?.conversation?.create_time) {
+            conversationMeta = props.conversation;
+            break;
+          }
+          fiber = fiber.return;
+          depth++;
+        }
+      }
+    }
+
+    // Format output based on requested format
+    let output = "";
+    const dateFormat = userSettings.dateFormat || "locale";
+
+    if (format === "markdown") {
+      output = `# ${title}\n\n`;
+      if (conversationMeta) {
+        const created = new Date(conversationMeta.create_time);
+        output += `**Created:** ${formatDate(created, dateFormat)}\n\n`;
+      }
+      output += `---\n\n`;
+
+      messages.forEach((msg) => {
+        const roleLabel = msg.role === "user" ? "**You**" : "**ChatGPT**";
+        const timeStr = msg.timestamp
+          ? ` *(${formatDate(msg.timestamp, dateFormat)})*`
+          : "";
+        output += `${roleLabel}${timeStr}:\n\n${msg.content}\n\n---\n\n`;
+      });
+    } else if (format === "plain") {
+      output = `${title}\n${"=".repeat(title.length)}\n\n`;
+      if (conversationMeta) {
+        const created = new Date(conversationMeta.create_time);
+        output += `Created: ${formatDate(created, dateFormat)}\n\n`;
+      }
+
+      messages.forEach((msg) => {
+        const roleLabel = msg.role === "user" ? "You" : "ChatGPT";
+        const timeStr = msg.timestamp
+          ? ` (${formatDate(msg.timestamp, dateFormat)})`
+          : "";
+        output += `[${roleLabel}]${timeStr}:\n${msg.content}\n\n`;
+      });
+    } else if (format === "json") {
+      const exportData = {
+        title,
+        created: conversationMeta
+          ? new Date(conversationMeta.create_time).toISOString()
+          : null,
+        updated: conversationMeta?.update_time
+          ? new Date(conversationMeta.update_time).toISOString()
+          : null,
+        messages: messages.map((msg) => ({
+          turn: msg.turnIndex,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp ? msg.timestamp.toISOString() : null,
+        })),
+      };
+      output = JSON.stringify(exportData, null, 2);
+    }
+
+    return {
+      success: true,
+      content: output,
+      messageCount: messages.length,
+      title: title,
+    };
+  } catch (error) {
+    return { success: false, message: `Export failed: ${error.message}` };
+  }
 }
 
 function formatTimestamp(value) {
