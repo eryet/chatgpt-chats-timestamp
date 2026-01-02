@@ -55,19 +55,25 @@ window.addEventListener("message", (event) => {
 
 // #region Scroll
 function scrollToTurn(targetTurnIndex) {
-  const turnIndexSpans = document.querySelectorAll(".chatgpt-turn-index");
+  const timestamps = document.querySelectorAll(".chatgpt-timestamp");
 
-  for (const span of turnIndexSpans) {
-    const turnText = span.textContent?.trim();
+  for (const timestamp of timestamps) {
+    const turnIndexEl = timestamp.querySelector(".chatgpt-turn-index");
+    const turnText = turnIndexEl?.textContent?.trim();
     if (!turnText) continue;
 
     const turnIndex = parseInt(turnText.replace("#", ""), 10);
     if (turnIndex !== targetTurnIndex) continue;
 
-    const messageDiv = span.closest("div[data-message-id]");
-    if (!messageDiv) continue;
-
-    messageDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Use the <article> element which has proper scroll-margin-top for the fixed header
+    const articleEl = timestamp.closest(
+      "article[data-testid^='conversation-turn-']"
+    );
+    if (articleEl) {
+      articleEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      timestamp.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     return { success: true, message: `Scrolled to turn #${targetTurnIndex}` };
   }
