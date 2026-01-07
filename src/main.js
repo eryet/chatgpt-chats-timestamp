@@ -91,9 +91,38 @@ function exportCurrentChat(format = "markdown") {
       return { success: false, message: "Could not find chat container" };
     }
 
-    // Get conversation title
-    const titleElement = document.querySelector("h1");
-    const title = titleElement?.textContent?.trim() || "Untitled Chat";
+    // Get conversation metadata from sidebar first (needed for title)
+    let conversationMeta = null;
+    const sidebarLinks = document.querySelectorAll('a[href^="/c/"]');
+    const currentPath = window.location.pathname;
+
+    for (const link of sidebarLinks) {
+      if (
+        link.getAttribute("href") === currentPath ||
+        link.classList.contains("bg-token-sidebar-surface-secondary")
+      ) {
+        const fiberKey = Object.keys(link).find((k) =>
+          k.startsWith("__reactFiber$")
+        );
+        if (fiberKey) {
+          let fiber = link[fiberKey];
+          let depth = 0;
+          while (fiber && depth < 25) {
+            const props = fiber.memoizedProps;
+            if (props?.conversation?.create_time) {
+              conversationMeta = props.conversation;
+              break;
+            }
+            fiber = fiber.return;
+            depth++;
+          }
+        }
+        if (conversationMeta) break;
+      }
+    }
+
+    // Get conversation title from sidebar metadata
+    const title = conversationMeta?.title?.trim() || "Untitled Chat";
 
     // Collect all messages
     const messageDivs = document.querySelectorAll("div[data-message-id]");
@@ -143,7 +172,33 @@ function exportCurrentChat(format = "markdown") {
       if (!messageData) return;
 
       const role = messageData.author?.role || "unknown";
-      const content = messageData.content?.parts?.join("\n") || "";
+      // Handle parts that can be strings or objects (like images)
+      const parts = messageData.content?.parts || [];
+      const contentParts = parts.map((part) => {
+        if (typeof part === "string") {
+          return part;
+        }
+        // Handle image/file objects
+        if (part && typeof part === "object") {
+          // Image asset pointer
+          // Note: Image URLs from ChatGPT are not directly viewable (they prompt download)
+          // and require authentication, so we just mark them as [Image] placeholder
+          if (
+            part.asset_pointer ||
+            part.content_type === "image_asset_pointer"
+          ) {
+            return "[Image]";
+          }
+          // File attachment
+          if (part.name && part.content_type) {
+            return `[File: ${part.name}]`;
+          }
+          // Generic object - skip
+          return "";
+        }
+        return "";
+      });
+      const content = contentParts.filter(Boolean).join("\n");
       const timestamp = messageData.create_time
         ? new Date(messageData.create_time * 1000)
         : null;
@@ -161,36 +216,6 @@ function exportCurrentChat(format = "markdown") {
 
     if (messages.length === 0) {
       return { success: false, message: "Could not extract message content" };
-    }
-
-    // Get conversation metadata from sidebar
-    let conversationMeta = null;
-    const sidebarLinks = document.querySelectorAll('a[href^="/c/"]');
-    const currentPath = window.location.pathname;
-
-    for (const link of sidebarLinks) {
-      if (
-        link.getAttribute("href") === currentPath ||
-        link.classList.contains("bg-token-sidebar-surface-secondary")
-      ) {
-        const fiberKey = Object.keys(link).find((k) =>
-          k.startsWith("__reactFiber$")
-        );
-        if (fiberKey) {
-          let fiber = link[fiberKey];
-          let depth = 0;
-          while (fiber && depth < 25) {
-            const props = fiber.memoizedProps;
-            if (props?.conversation?.create_time) {
-              conversationMeta = props.conversation;
-              break;
-            }
-            fiber = fiber.return;
-            depth++;
-          }
-        }
-        if (conversationMeta) break;
-      }
     }
 
     // Helper function to process citations in content
