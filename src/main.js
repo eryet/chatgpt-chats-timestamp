@@ -1,4 +1,4 @@
-// Global settings cache
+// #region Settings
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
@@ -6,8 +6,9 @@ let userSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
 };
+// #endregion
 
-// Listen for settings updates from bridge script (runs in isolated world)
+// #region Event Listeners
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
@@ -38,31 +39,347 @@ window.addEventListener("message", (event) => {
       window.location.origin
     );
   }
+
+  if (event.data?.type === "EXPORT_CHAT") {
+    const result = exportCurrentChat(event.data.format);
+    window.postMessage(
+      {
+        type: "EXPORT_CHAT_RESULT",
+        result: result,
+      },
+      window.location.origin
+    );
+  }
 });
+// #endregion
 
-// formatDate and getRelativeTime are loaded from utils.js
-
+// #region Scroll
 function scrollToTurn(targetTurnIndex) {
-  const turnIndexSpans = document.querySelectorAll(".chatgpt-turn-index");
+  const timestamps = document.querySelectorAll(".chatgpt-timestamp");
 
-  for (const span of turnIndexSpans) {
-    const turnText = span.textContent?.trim();
+  for (const timestamp of timestamps) {
+    const turnIndexEl = timestamp.querySelector(".chatgpt-turn-index");
+    const turnText = turnIndexEl?.textContent?.trim();
     if (!turnText) continue;
 
     const turnIndex = parseInt(turnText.replace("#", ""), 10);
     if (turnIndex !== targetTurnIndex) continue;
 
-    const messageDiv = span.closest("div[data-message-id]");
-    if (!messageDiv) continue;
-
-    messageDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Use the <article> element which has proper scroll-margin-top for the fixed header
+    const articleEl = timestamp.closest(
+      "article[data-testid^='conversation-turn-']"
+    );
+    if (articleEl) {
+      articleEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      timestamp.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     return { success: true, message: `Scrolled to turn #${targetTurnIndex}` };
   }
 
   return { success: false, message: `Turn #${targetTurnIndex} not found` };
 }
+// #endregion
 
+// #region Export
+function exportCurrentChat(format = "markdown") {
+  try {
+    // Find the conversation data from React fiber
+    const mainElement = document.querySelector("main");
+    if (!mainElement) {
+      return { success: false, message: "Could not find chat container" };
+    }
+
+    // Get conversation metadata from sidebar first (needed for title)
+    let conversationMeta = null;
+    const sidebarLinks = document.querySelectorAll('a[href^="/c/"]');
+    const currentPath = window.location.pathname;
+
+    for (const link of sidebarLinks) {
+      if (
+        link.getAttribute("href") === currentPath ||
+        link.classList.contains("bg-token-sidebar-surface-secondary")
+      ) {
+        const fiberKey = Object.keys(link).find((k) =>
+          k.startsWith("__reactFiber$")
+        );
+        if (fiberKey) {
+          let fiber = link[fiberKey];
+          let depth = 0;
+          while (fiber && depth < 25) {
+            const props = fiber.memoizedProps;
+            if (props?.conversation?.create_time) {
+              conversationMeta = props.conversation;
+              break;
+            }
+            fiber = fiber.return;
+            depth++;
+          }
+        }
+        if (conversationMeta) break;
+      }
+    }
+
+    // Get conversation title from sidebar metadata
+    const title = conversationMeta?.title?.trim() || "Untitled Chat";
+
+    // Collect all messages
+    const messageDivs = document.querySelectorAll("div[data-message-id]");
+    if (messageDivs.length === 0) {
+      return { success: false, message: "No messages found in this chat" };
+    }
+
+    const messages = [];
+    messageDivs.forEach((div) => {
+      const fiberKey = Object.keys(div).find((k) =>
+        k.startsWith("__reactFiber$")
+      );
+      if (!fiberKey) return;
+
+      let fiber = div[fiberKey];
+      let depth = 0;
+      let messageData = null;
+      let turnIndex = null;
+      let contentReferences = [];
+
+      while (fiber && depth < 150) {
+        const props = fiber.memoizedProps;
+
+        // Get turnIndex
+        if (turnIndex == null && props?.turnIndex != null) {
+          turnIndex = props.turnIndex;
+        }
+
+        // Get message data
+        if (!messageData && props?.message?.content?.parts) {
+          messageData = props.message;
+        }
+
+        // Get content_references for citations
+        if (
+          contentReferences.length === 0 &&
+          props?.message?.metadata?.content_references?.length > 0
+        ) {
+          contentReferences = props.message.metadata.content_references;
+        }
+
+        if (messageData && turnIndex != null) break;
+        fiber = fiber.return;
+        depth++;
+      }
+
+      if (!messageData) return;
+
+      const role = messageData.author?.role || "unknown";
+      // Handle parts that can be strings or objects (like images)
+      const parts = messageData.content?.parts || [];
+      const contentParts = parts.map((part) => {
+        if (typeof part === "string") {
+          return part;
+        }
+        // Handle image/file objects
+        if (part && typeof part === "object") {
+          // Image asset pointer
+          // Note: Image URLs from ChatGPT are not directly viewable (they prompt download)
+          // and require authentication, so we just mark them as [Image] placeholder
+          if (
+            part.asset_pointer ||
+            part.content_type === "image_asset_pointer"
+          ) {
+            return "[Image]";
+          }
+          // File attachment
+          if (part.name && part.content_type) {
+            return `[File: ${part.name}]`;
+          }
+          // Generic object - skip
+          return "";
+        }
+        return "";
+      });
+      const content = contentParts.filter(Boolean).join("\n");
+      const timestamp = messageData.create_time
+        ? new Date(messageData.create_time * 1000)
+        : null;
+
+      if (content.trim()) {
+        messages.push({
+          turnIndex,
+          role,
+          content: content.trim(),
+          timestamp,
+          contentReferences,
+        });
+      }
+    });
+
+    if (messages.length === 0) {
+      return { success: false, message: "Could not extract message content" };
+    }
+
+    // Helper function to process citations in content
+    function processCitations(content, contentReferences, format) {
+      if (!contentReferences || contentReferences.length === 0) {
+        // Remove orphan citation markers
+        return content.replace(
+          /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+          ""
+        );
+      }
+
+      let processedContent = content;
+      const citationMap = new Map();
+
+      // Build citation map from content_references
+      contentReferences.forEach((ref) => {
+        if (!ref || typeof ref !== "object") return;
+
+        const matchedText = ref.matched_text;
+        const alt = ref.alt; // Pre-formatted markdown like "([Title](url))"
+        const safeUrls = ref.safe_urls || [];
+        const type = ref.type;
+
+        // Skip non-citation types
+        if (type === "sources_footnote" || !matchedText || matchedText === " ")
+          return;
+
+        if (matchedText && (safeUrls.length > 0 || alt)) {
+          // Get the first non-utm URL or the first URL
+          const url =
+            safeUrls.find((u) => !u.includes("utm_source")) ||
+            safeUrls[0] ||
+            "";
+
+          // Map the matched_text to citation info
+          citationMap.set(matchedText.toLowerCase(), { url, alt });
+        }
+      });
+
+      if (citationMap.size === 0) {
+        // No valid citations, just clean up markers
+        return processedContent.replace(
+          /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+          ""
+        );
+      }
+
+      // Replace citation markers with proper formatted links
+      // Sort by length descending to match longer patterns first
+      const sortedMarkers = [...citationMap.keys()].sort(
+        (a, b) => b.length - a.length
+      );
+
+      for (const marker of sortedMarkers) {
+        const cite = citationMap.get(marker);
+        // Create case-insensitive regex for this marker
+        const regex = new RegExp(
+          marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "gi"
+        );
+
+        processedContent = processedContent.replace(regex, () => {
+          if (format === "markdown" && cite.alt) {
+            return ` ${cite.alt}`;
+          } else if (format === "plain" && cite.url) {
+            try {
+              const domain = new URL(cite.url).hostname.replace("www.", "");
+              return ` [${domain}]`;
+            } catch {
+              return "";
+            }
+          }
+          return "";
+        });
+      }
+
+      // Clean up any remaining unmatched citation markers
+      return processedContent.replace(
+        /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
+        ""
+      );
+    }
+
+    // Format output based on requested format
+    let output = "";
+    const dateFormat = userSettings.dateFormat || "locale";
+
+    if (format === "markdown") {
+      output = `# ${title}\n\n`;
+      if (conversationMeta) {
+        const created = new Date(conversationMeta.create_time);
+        output += `**Created:** ${formatDate(created, dateFormat)}\n\n`;
+      }
+      output += `---\n\n`;
+
+      messages.forEach((msg) => {
+        const roleLabel = msg.role === "user" ? "**You**" : "**ChatGPT**";
+        const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
+        const timeStr = msg.timestamp
+          ? ` *(${formatDate(msg.timestamp, dateFormat)})*`
+          : "";
+
+        const processedContent = processCitations(
+          msg.content,
+          msg.contentReferences,
+          "markdown"
+        );
+        output += `### ${turnStr}${roleLabel}${timeStr}\n\n${processedContent}\n\n---\n\n`;
+      });
+    } else if (format === "plain") {
+      output = `${title}\n${"=".repeat(title.length)}\n\n`;
+      if (conversationMeta) {
+        const created = new Date(conversationMeta.create_time);
+        output += `Created: ${formatDate(created, dateFormat)}\n\n`;
+      }
+
+      messages.forEach((msg) => {
+        const roleLabel = msg.role === "user" ? "You" : "ChatGPT";
+        const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
+        const timeStr = msg.timestamp
+          ? ` (${formatDate(msg.timestamp, dateFormat)})`
+          : "";
+
+        const processedContent = processCitations(
+          msg.content,
+          msg.contentReferences,
+          "plain"
+        );
+        output += `[${turnStr}${roleLabel}]${timeStr}:\n${processedContent}\n\n`;
+      });
+    } else if (format === "json") {
+      const exportData = {
+        title,
+        created: conversationMeta?.create_time
+          ? new Date(conversationMeta.create_time).toISOString()
+          : null,
+        updated: conversationMeta?.update_time
+          ? new Date(conversationMeta.update_time).toISOString()
+          : null,
+        messageCount: messages.length,
+        messages: messages.map((msg) => ({
+          turn: msg.turnIndex,
+          role: msg.role,
+          content: processCitations(msg.content, msg.contentReferences, "json"),
+          timestamp: msg.timestamp ? msg.timestamp.toISOString() : null,
+        })),
+      };
+      output = JSON.stringify(exportData, null, 2);
+    }
+
+    return {
+      success: true,
+      content: output,
+      messageCount: messages.length,
+      title: title,
+    };
+  } catch (error) {
+    return { success: false, message: `Export failed: ${error.message}` };
+  }
+}
+// #endregion
+
+// #region Utils
 function formatTimestamp(value) {
   if (!value) return "";
   const d = new Date(value);
@@ -83,7 +400,9 @@ function setHoverExpanded(el, expanded) {
   secondaryEl.style.display = shouldExpand ? "block" : "none";
   el.style.paddingBottom = shouldExpand ? "28px" : "15px";
 }
+// #endregion
 
+// #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const links = document.querySelectorAll('a[href^="/c/"]');
@@ -198,7 +517,9 @@ function addSidebarTimestampsFiber() {
     el.dataset.timestampAdded = "true";
   });
 }
+// #endregion
 
+// #region Chat
 function addChatTimestamps() {
   const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
     userSettings;
@@ -309,7 +630,9 @@ function addChatTimestamps() {
     div.dataset.timestampAdded = "true";
   });
 }
+// #endregion
 
+// #region Init
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
@@ -331,5 +654,5 @@ function startRehydrationLoop() {
   }, 1500);
 }
 
-// Initialize
 setTimeout(startRehydrationLoop, 2000);
+// #endregion

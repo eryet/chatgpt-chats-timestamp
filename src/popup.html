@@ -221,6 +221,54 @@
       .scroll-status.success {
         color: #10a37f;
       }
+      .export-section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+      }
+      .export-row {
+        display: flex;
+        gap: 8px;
+      }
+      .export-row select {
+        flex: 1;
+      }
+      .export-btn {
+        padding: 8px 16px;
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .export-btn:hover {
+        background: #4f46e5;
+      }
+      .export-btn:active {
+        background: #4338ca;
+      }
+      .export-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      .export-status {
+        font-size: 11px;
+        margin-top: 6px;
+        min-height: 16px;
+        color: #6b7280;
+      }
+      .export-status.error {
+        color: #dc2626;
+      }
+      .export-status.success {
+        color: #10a37f;
+      }
     </style>
   </head>
   <body>
@@ -296,6 +344,21 @@
         <button class="scroll-btn" id="scrollToTurnBtn">Go</button>
       </div>
       <div class="scroll-status" id="scrollStatus"></div>
+    </div>
+
+    <div class="setting-group export-section">
+      <label class="setting-label"
+        >Export Chat (Images & files not supported)</label
+      >
+      <div class="export-row">
+        <select id="exportFormat">
+          <option value="markdown">Markdown</option>
+          <option value="plain">Plain Text</option>
+          <option value="json">JSON</option>
+        </select>
+        <button class="export-btn" id="exportBtn">📋 Copy</button>
+      </div>
+      <div class="export-status" id="exportStatus"></div>
     </div>
 
     <div class="footer">

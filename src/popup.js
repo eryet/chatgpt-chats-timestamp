@@ -148,3 +148,63 @@ turnIndexInput.addEventListener("keypress", (e) => {
     scrollToTurnBtn.click();
   }
 });
+
+// Export chat functionality
+const exportFormatSelect = document.getElementById("exportFormat");
+const exportBtn = document.getElementById("exportBtn");
+const exportStatusEl = document.getElementById("exportStatus");
+
+function showExportStatus(message, type = "") {
+  exportStatusEl.textContent = message;
+  exportStatusEl.className = "export-status " + type;
+  if (type === "success") {
+    setTimeout(() => {
+      exportStatusEl.textContent = "";
+      exportStatusEl.className = "export-status";
+    }, 3000);
+  }
+}
+
+exportBtn.addEventListener("click", () => {
+  const format = exportFormatSelect.value;
+  exportBtn.disabled = true;
+  showExportStatus("Exporting...");
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (!tabs[0]?.id) {
+      showExportStatus("Could not find active tab", "error");
+      exportBtn.disabled = false;
+      return;
+    }
+
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { type: "EXPORT_CHAT", format: format },
+      (response) => {
+        exportBtn.disabled = false;
+
+        if (chrome.runtime.lastError) {
+          showExportStatus("Could not connect to page", "error");
+          return;
+        }
+
+        if (response?.success) {
+          // Copy to clipboard
+          navigator.clipboard
+            .writeText(response.content)
+            .then(() => {
+              showExportStatus(
+                `Copied ${response.messageCount} messages!`,
+                "success"
+              );
+            })
+            .catch(() => {
+              showExportStatus("Failed to copy to clipboard", "error");
+            });
+        } else {
+          showExportStatus(response?.message || "Export failed", "error");
+        }
+      }
+    );
+  });
+});
