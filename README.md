@@ -1,7 +1,26 @@
 # ChatGPT Chats Timestamp
 <img width="1280" height="800" alt="dark" src="https://github.com/user-attachments/assets/e370a2cb-bc50-431a-bf3d-089d87f16831" />
 
-A lightweight Chrome extension that displays creation timestamps for your ChatGPT conversations in the sidebar.
+See exactly when each conversation was created in the sidebar.
+
+How to use:
+Install the extension and open ChatGPT – timestamps appear automatically! Click the extension icon to customize date formats, toggle in-chat timestamps, and adjust display preferences.
+
+💬 In-Chat Message Timestamps (enabled by default)
+Every message in your conversation displays its timestamp. Don't need it? Easily toggle it off in settings.
+
+🎯 Jump to Message
+Quickly navigate to any specific turn in your conversation with the jump-to feature.
+
+📋 Export Chat
+Export your entire conversation to clipboard in multiple formats – Markdown, Plain Text, or JSON. Perfect for saving, sharing, or archiving your chats.
+
+⚙️ Fully Customizable
+• Multiple date formats – locale-based, relative time ("2 days ago"), or custom
+• Display modes – show created date, last updated, or both
+• Hover details – see additional info on hover
+• Adjustable timestamp position
+• Support dark mode and light mode
 
 <a title="Users" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/users/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
 <a title="Version" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/v/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
