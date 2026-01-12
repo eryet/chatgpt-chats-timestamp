@@ -9,11 +9,37 @@ const defaultSettings = {
   chatTimestampPosition: "center",
 };
 
+const i18nTemplates = {
+  scrollToTurnSuccessTemplate: chrome.i18n.getMessage(
+    "scrollToTurnSuccessTemplate"
+  ),
+  scrollToTurnNotFoundTemplate: chrome.i18n.getMessage(
+    "scrollToTurnNotFoundTemplate"
+  ),
+  exportChatContainerMissing: chrome.i18n.getMessage(
+    "exportChatContainerMissing"
+  ),
+  exportNoMessages: chrome.i18n.getMessage("exportNoMessages"),
+  exportExtractFailed: chrome.i18n.getMessage("exportExtractFailed"),
+  exportFailedTemplate: chrome.i18n.getMessage("exportFailedTemplate"),
+  untitledChat: chrome.i18n.getMessage("untitledChat"),
+  exportCreatedLabel: chrome.i18n.getMessage("exportCreatedLabel"),
+  exportRoleYou: chrome.i18n.getMessage("exportRoleYou"),
+  exportRoleChatgpt: chrome.i18n.getMessage("exportRoleChatgpt"),
+  exportPlaceholderImage: chrome.i18n.getMessage("exportPlaceholderImage"),
+  exportPlaceholderFileTemplate: chrome.i18n.getMessage(
+    "exportPlaceholderFileTemplate"
+  ),
+};
+
+const requestTimedOutMessage = chrome.i18n.getMessage("requestTimedOut");
+
 function sendSettingsToPage(settings) {
   window.postMessage(
     {
       type: "TIMESTAMP_SETTINGS_UPDATE",
       settings: settings,
+      i18n: i18nTemplates,
     },
     window.location.origin
   );
@@ -48,7 +74,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const timeoutId = setTimeout(() => {
       window.removeEventListener("message", responseHandler);
-      sendResponse({ success: false, message: "Request timed out" });
+      sendResponse({
+        success: false,
+        message: requestTimedOutMessage || "Request timed out",
+      });
     }, 5000);
 
     window.addEventListener("message", responseHandler);
@@ -78,7 +107,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const timeoutId = setTimeout(() => {
       window.removeEventListener("message", responseHandler);
-      sendResponse({ success: false, message: "Request timed out" });
+      sendResponse({
+        success: false,
+        message: requestTimedOutMessage || "Request timed out",
+      });
     }, 5000);
 
     window.addEventListener("message", responseHandler);
