@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -10,8 +10,8 @@
         padding: 0;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         width: 280px;
         padding: 16px;
         background: #ffffff;
@@ -202,6 +202,7 @@
         font-weight: 500;
         cursor: pointer;
         transition: background 0.2s;
+        white-space: nowrap;
       }
       .scroll-btn:hover {
         background: #0d8a6a;
@@ -376,7 +377,11 @@
       >
       <div class="scroll-row">
         <input type="number" id="turnIndexInput" min="1" placeholder="#" />
-        <button class="scroll-btn" id="scrollToTurnBtn" data-i18n="jumpToTurnButton">
+        <button
+          class="scroll-btn"
+          id="scrollToTurnBtn"
+          data-i18n="jumpToTurnButton"
+        >
           Go
         </button>
       </div>
