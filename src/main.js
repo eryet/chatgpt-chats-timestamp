@@ -1,4 +1,19 @@
 // #region Settings
+const defaultI18n = {
+  scrollToTurnSuccessTemplate: "Scrolled to turn #{{turnIndex}}",
+  scrollToTurnNotFoundTemplate: "Turn #{{turnIndex}} not found",
+  exportChatContainerMissing: "Could not find chat container",
+  exportNoMessages: "No messages found in this chat",
+  exportExtractFailed: "Could not extract message content",
+  exportFailedTemplate: "Export failed: {{error}}",
+  untitledChat: "Untitled Chat",
+  exportCreatedLabel: "Created",
+  exportRoleYou: "You",
+  exportRoleChatgpt: "ChatGPT",
+  exportPlaceholderImage: "[Image]",
+  exportPlaceholderFileTemplate: "[File: {{fileName}}]",
+};
+
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
@@ -6,13 +21,32 @@ let userSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
 };
+
+let userI18n = { ...defaultI18n };
 // #endregion
+
+function formatTemplate(template, values) {
+  if (!template) return "";
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
+    if (values && values[key] != null) {
+      return String(values[key]);
+    }
+    return "";
+  });
+}
 
 // #region Event Listeners
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
+    if (event.data?.i18n) {
+      const nextI18n = { ...defaultI18n };
+      Object.entries(event.data.i18n).forEach(([key, value]) => {
+        if (value) nextI18n[key] = value;
+      });
+      userI18n = nextI18n;
+    }
 
     // Clear chat timestamp marks when settings change to force re-render
     document.querySelectorAll("div[data-message-id]").forEach((div) => {
@@ -75,10 +109,20 @@ function scrollToTurn(targetTurnIndex) {
       timestamp.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    return { success: true, message: `Scrolled to turn #${targetTurnIndex}` };
+    return {
+      success: true,
+      message: formatTemplate(userI18n.scrollToTurnSuccessTemplate, {
+        turnIndex: targetTurnIndex,
+      }),
+    };
   }
 
-  return { success: false, message: `Turn #${targetTurnIndex} not found` };
+  return {
+    success: false,
+    message: formatTemplate(userI18n.scrollToTurnNotFoundTemplate, {
+      turnIndex: targetTurnIndex,
+    }),
+  };
 }
 // #endregion
 
@@ -88,7 +132,7 @@ function exportCurrentChat(format = "markdown") {
     // Find the conversation data from React fiber
     const mainElement = document.querySelector("main");
     if (!mainElement) {
-      return { success: false, message: "Could not find chat container" };
+      return { success: false, message: userI18n.exportChatContainerMissing };
     }
 
     // Get conversation metadata from sidebar first (needed for title)
@@ -122,15 +166,20 @@ function exportCurrentChat(format = "markdown") {
     }
 
     // Get conversation title from sidebar metadata
-    const title = conversationMeta?.title?.trim() || "Untitled Chat";
+    const title = conversationMeta?.title?.trim() || userI18n.untitledChat;
 
     // Collect all messages
     const messageDivs = document.querySelectorAll("div[data-message-id]");
     if (messageDivs.length === 0) {
-      return { success: false, message: "No messages found in this chat" };
+      return { success: false, message: userI18n.exportNoMessages };
     }
 
     const messages = [];
+    const imagePlaceholder =
+      userI18n.exportPlaceholderImage || defaultI18n.exportPlaceholderImage;
+    const filePlaceholderTemplate =
+      userI18n.exportPlaceholderFileTemplate ||
+      defaultI18n.exportPlaceholderFileTemplate;
     messageDivs.forEach((div) => {
       const fiberKey = Object.keys(div).find((k) =>
         k.startsWith("__reactFiber$")
@@ -187,11 +236,13 @@ function exportCurrentChat(format = "markdown") {
             part.asset_pointer ||
             part.content_type === "image_asset_pointer"
           ) {
-            return "[Image]";
+            return imagePlaceholder;
           }
           // File attachment
           if (part.name && part.content_type) {
-            return `[File: ${part.name}]`;
+            return formatTemplate(filePlaceholderTemplate, {
+              fileName: part.name,
+            });
           }
           // Generic object - skip
           return "";
@@ -215,7 +266,7 @@ function exportCurrentChat(format = "markdown") {
     });
 
     if (messages.length === 0) {
-      return { success: false, message: "Could not extract message content" };
+      return { success: false, message: userI18n.exportExtractFailed };
     }
 
     // Helper function to process citations in content
@@ -303,17 +354,23 @@ function exportCurrentChat(format = "markdown") {
     // Format output based on requested format
     let output = "";
     const dateFormat = userSettings.dateFormat || "locale";
+    const createdLabel =
+      userI18n.exportCreatedLabel || defaultI18n.exportCreatedLabel;
+    const roleYou = userI18n.exportRoleYou || defaultI18n.exportRoleYou;
+    const roleChatgpt =
+      userI18n.exportRoleChatgpt || defaultI18n.exportRoleChatgpt;
 
     if (format === "markdown") {
       output = `# ${title}\n\n`;
       if (conversationMeta) {
         const created = new Date(conversationMeta.create_time);
-        output += `**Created:** ${formatDate(created, dateFormat)}\n\n`;
+        output += `**${createdLabel}:** ${formatDate(created, dateFormat)}\n\n`;
       }
       output += `---\n\n`;
 
       messages.forEach((msg) => {
-        const roleLabel = msg.role === "user" ? "**You**" : "**ChatGPT**";
+        const roleLabel =
+          msg.role === "user" ? `**${roleYou}**` : `**${roleChatgpt}**`;
         const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` *(${formatDate(msg.timestamp, dateFormat)})*`
@@ -330,11 +387,11 @@ function exportCurrentChat(format = "markdown") {
       output = `${title}\n${"=".repeat(title.length)}\n\n`;
       if (conversationMeta) {
         const created = new Date(conversationMeta.create_time);
-        output += `Created: ${formatDate(created, dateFormat)}\n\n`;
+        output += `${createdLabel}: ${formatDate(created, dateFormat)}\n\n`;
       }
 
       messages.forEach((msg) => {
-        const roleLabel = msg.role === "user" ? "You" : "ChatGPT";
+        const roleLabel = msg.role === "user" ? roleYou : roleChatgpt;
         const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` (${formatDate(msg.timestamp, dateFormat)})`
@@ -374,7 +431,12 @@ function exportCurrentChat(format = "markdown") {
       title: title,
     };
   } catch (error) {
-    return { success: false, message: `Export failed: ${error.message}` };
+    return {
+      success: false,
+      message: formatTemplate(userI18n.exportFailedTemplate, {
+        error: error.message,
+      }),
+    };
   }
 }
 // #endregion

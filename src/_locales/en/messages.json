@@ -1,0 +1,188 @@
+{
+  "appName": {
+    "message": "ChatGPT Chats Timestamp"
+  },
+  "appDescription": {
+    "message": "Adds created timestamps under each ChatGPT sidebar conversations. See when each chat was created at a glance!"
+  },
+  "actionTitle": {
+    "message": "Timestamp Settings"
+  },
+  "popupTitle": {
+    "message": "Timestamp Settings"
+  },
+  "labelDateFormat": {
+    "message": "Date & Time Format"
+  },
+  "optionFormatLocale": {
+    "message": "System Locale"
+  },
+  "optionFormatISO": {
+    "message": "ISO (2024-12-18 14:30:00)"
+  },
+  "optionFormatUS": {
+    "message": "US (12/18/2024 2:30 PM)"
+  },
+  "optionFormatEU": {
+    "message": "EU (18/12/2024 14:30)"
+  },
+  "optionFormatUK": {
+    "message": "UK (18/12/2024 2:30 PM)"
+  },
+  "optionFormatRelative": {
+    "message": "Relative (2h ago)"
+  },
+  "optionFormatShort": {
+    "message": "Short (Dec 18, 2:30 PM)"
+  },
+  "optionFormatDateOnly": {
+    "message": "Date Only (Dec 18, 2024)"
+  },
+  "optionFormatTimeOnly": {
+    "message": "Time Only (2:30 PM)"
+  },
+  "labelDisplay": {
+    "message": "Display"
+  },
+  "optionDisplayCreated": {
+    "message": "Created time"
+  },
+  "optionDisplayUpdated": {
+    "message": "Updated time"
+  },
+  "labelHoverEnabled": {
+    "message": "Show other on hover"
+  },
+  "labelChatTimestampEnabled": {
+    "message": "Show chat timestamps"
+  },
+  "labelChatTimestampPosition": {
+    "message": "Chat timestamp position"
+  },
+  "optionPositionLeft": {
+    "message": "Left"
+  },
+  "optionPositionCenter": {
+    "message": "Center"
+  },
+  "optionPositionRight": {
+    "message": "Right"
+  },
+  "previewLabel": {
+    "message": "Preview"
+  },
+  "jumpToTurnLabel": {
+    "message": "Jump to Chat Turn"
+  },
+  "jumpToTurnButton": {
+    "message": "Go"
+  },
+  "exportChatLabel": {
+    "message": "Export Chat (Images & files not supported)"
+  },
+  "exportFormatMarkdown": {
+    "message": "Markdown"
+  },
+  "exportFormatPlain": {
+    "message": "Plain Text"
+  },
+  "exportFormatJson": {
+    "message": "JSON"
+  },
+  "exportCopyButton": {
+    "message": "📋 Copy"
+  },
+  "resetButton": {
+    "message": "Restore defaults"
+  },
+  "statusSaved": {
+    "message": "Saved ✓"
+  },
+  "previewHover": {
+    "message": "(hover: $1)",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      }
+    }
+  },
+  "scrollInvalidTurn": {
+    "message": "Please enter a valid turn number"
+  },
+  "scrollSuccess": {
+    "message": "Scrolled to turn #$1",
+    "placeholders": {
+      "turnIndex": {
+        "content": "$1"
+      }
+    }
+  },
+  "scrollConnectError": {
+    "message": "Could not connect to page"
+  },
+  "scrollTurnNotFound": {
+    "message": "Turn not found"
+  },
+  "exportNoActiveTab": {
+    "message": "Could not find active tab"
+  },
+  "exportExporting": {
+    "message": "Exporting..."
+  },
+  "exportConnectError": {
+    "message": "Could not connect to page"
+  },
+  "exportCopySuccess": {
+    "message": "Copied $1 messages!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "exportCopyFailed": {
+    "message": "Failed to copy to clipboard"
+  },
+  "exportFailed": {
+    "message": "Export failed"
+  },
+  "requestTimedOut": {
+    "message": "Request timed out"
+  },
+  "scrollToTurnSuccessTemplate": {
+    "message": "Scrolled to turn #{{turnIndex}}"
+  },
+  "scrollToTurnNotFoundTemplate": {
+    "message": "Turn #{{turnIndex}} not found"
+  },
+  "exportChatContainerMissing": {
+    "message": "Could not find chat container"
+  },
+  "exportNoMessages": {
+    "message": "No messages found in this chat"
+  },
+  "exportExtractFailed": {
+    "message": "Could not extract message content"
+  },
+  "exportFailedTemplate": {
+    "message": "Export failed: {{error}}"
+  },
+  "untitledChat": {
+    "message": "Untitled Chat"
+  },
+  "exportCreatedLabel": {
+    "message": "Created"
+  },
+  "exportRoleYou": {
+    "message": "You"
+  },
+  "exportRoleChatgpt": {
+    "message": "ChatGPT"
+  },
+  "exportPlaceholderImage": {
+    "message": "[Image]"
+  },
+  "exportPlaceholderFileTemplate": {
+    "message": "[File: {{fileName}}]"
+  }
+}

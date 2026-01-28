@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Timestamp Settings</title>
+    <title data-i18n="popupTitle">Timestamp Settings</title>
     <style>
       * {
         box-sizing: border-box;
@@ -10,8 +10,8 @@
         padding: 0;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         width: 280px;
         padding: 16px;
         background: #ffffff;
@@ -202,6 +202,7 @@
         font-weight: 500;
         cursor: pointer;
         transition: background 0.2s;
+        white-space: nowrap;
       }
       .scroll-btn:hover {
         background: #0d8a6a;
@@ -278,31 +279,59 @@
     </div> -->
 
     <div class="setting-group">
-      <label class="setting-label" for="dateFormat">Date & Time Format</label>
+      <label class="setting-label" for="dateFormat" data-i18n="labelDateFormat"
+        >Date & Time Format</label
+      >
       <select id="dateFormat">
-        <option value="locale">System Locale</option>
-        <option value="iso">ISO (2024-12-18 14:30:00)</option>
-        <option value="us">US (12/18/2024 2:30 PM)</option>
-        <option value="eu">EU (18/12/2024 14:30)</option>
-        <option value="uk">UK (18/12/2024 2:30 PM)</option>
-        <option value="relative">Relative (2h ago)</option>
-        <option value="short">Short (Dec 18, 2:30 PM)</option>
-        <option value="dateOnly">Date Only (Dec 18, 2024)</option>
-        <option value="timeOnly">Time Only (2:30 PM)</option>
+        <option value="locale" data-i18n="optionFormatLocale">
+          System Locale
+        </option>
+        <option value="iso" data-i18n="optionFormatISO">
+          ISO (2024-12-18 14:30:00)
+        </option>
+        <option value="us" data-i18n="optionFormatUS">
+          US (12/18/2024 2:30 PM)
+        </option>
+        <option value="eu" data-i18n="optionFormatEU">
+          EU (18/12/2024 14:30)
+        </option>
+        <option value="uk" data-i18n="optionFormatUK">
+          UK (18/12/2024 2:30 PM)
+        </option>
+        <option value="relative" data-i18n="optionFormatRelative">
+          Relative (2h ago)
+        </option>
+        <option value="short" data-i18n="optionFormatShort">
+          Short (Dec 18, 2:30 PM)
+        </option>
+        <option value="dateOnly" data-i18n="optionFormatDateOnly">
+          Date Only (Dec 18, 2024)
+        </option>
+        <option value="timeOnly" data-i18n="optionFormatTimeOnly">
+          Time Only (2:30 PM)
+        </option>
       </select>
     </div>
 
     <div class="setting-group">
-      <label class="setting-label" for="displayMode">Display</label>
+      <label class="setting-label" for="displayMode" data-i18n="labelDisplay"
+        >Display</label
+      >
       <select id="displayMode">
-        <option value="created">Created time</option>
-        <option value="updated">Updated time</option>
+        <option value="created" data-i18n="optionDisplayCreated">
+          Created time
+        </option>
+        <option value="updated" data-i18n="optionDisplayUpdated">
+          Updated time
+        </option>
       </select>
     </div>
 
     <div class="setting-group">
       <div class="toggle-row">
-        <span class="toggle-label">Show other on hover</span>
+        <span class="toggle-label" data-i18n="labelHoverEnabled"
+          >Show other on hover</span
+        >
         <label class="toggle-switch">
           <input type="checkbox" id="hoverEnabled" checked />
           <span class="toggle-slider"></span>
@@ -312,7 +341,9 @@
 
     <div class="setting-group">
       <div class="toggle-row">
-        <span class="toggle-label">Show chat timestamps</span>
+        <span class="toggle-label" data-i18n="labelChatTimestampEnabled"
+          >Show chat timestamps</span
+        >
         <label class="toggle-switch">
           <input type="checkbox" id="chatTimestampEnabled" checked />
           <span class="toggle-slider"></span>
@@ -321,49 +352,68 @@
     </div>
 
     <div class="setting-group">
-      <label class="setting-label" for="chatTimestampPosition"
+      <label
+        class="setting-label"
+        for="chatTimestampPosition"
+        data-i18n="labelChatTimestampPosition"
         >Chat timestamp position</label
       >
       <select id="chatTimestampPosition">
-        <option value="left">Left</option>
-        <option value="center">Center</option>
-        <option value="right">Right</option>
+        <option value="left" data-i18n="optionPositionLeft">Left</option>
+        <option value="center" data-i18n="optionPositionCenter">Center</option>
+        <option value="right" data-i18n="optionPositionRight">Right</option>
       </select>
     </div>
 
     <div class="preview">
-      <div class="preview-label">Preview</div>
+      <div class="preview-label" data-i18n="previewLabel">Preview</div>
       <div class="preview-text" id="previewPrimary">—</div>
       <div class="preview-secondary" id="previewSecondary"></div>
     </div>
 
     <div class="setting-group scroll-section">
-      <label class="setting-label">Jump to Turn</label>
+      <label class="setting-label" data-i18n="jumpToTurnLabel"
+        >Jump to Turn</label
+      >
       <div class="scroll-row">
         <input type="number" id="turnIndexInput" min="1" placeholder="#" />
-        <button class="scroll-btn" id="scrollToTurnBtn">Go</button>
+        <button
+          class="scroll-btn"
+          id="scrollToTurnBtn"
+          data-i18n="jumpToTurnButton"
+        >
+          Go
+        </button>
       </div>
       <div class="scroll-status" id="scrollStatus"></div>
     </div>
 
     <div class="setting-group export-section">
-      <label class="setting-label"
+      <label class="setting-label" data-i18n="exportChatLabel"
         >Export Chat (Images & files not supported)</label
       >
       <div class="export-row">
         <select id="exportFormat">
-          <option value="markdown">Markdown</option>
-          <option value="plain">Plain Text</option>
-          <option value="json">JSON</option>
+          <option value="markdown" data-i18n="exportFormatMarkdown">
+            Markdown
+          </option>
+          <option value="plain" data-i18n="exportFormatPlain">
+            Plain Text
+          </option>
+          <option value="json" data-i18n="exportFormatJson">JSON</option>
         </select>
-        <button class="export-btn" id="exportBtn">📋 Copy</button>
+        <button class="export-btn" id="exportBtn" data-i18n="exportCopyButton">
+          📋 Copy
+        </button>
       </div>
       <div class="export-status" id="exportStatus"></div>
     </div>
 
     <div class="footer">
-      <button class="reset-btn" id="resetBtn">Restore defaults</button>
-      <div class="status" id="status">Saved ✓</div>
+      <button class="reset-btn" id="resetBtn" data-i18n="resetButton">
+        Restore defaults
+      </button>
+      <div class="status" id="status" data-i18n="statusSaved">Saved ✓</div>
     </div>
 
     <script src="utils.js"></script>

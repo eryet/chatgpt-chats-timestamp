@@ -1,0 +1,188 @@
+{
+  "appName": {
+    "message": "ChatGPT 對話時間戳"
+  },
+  "appDescription": {
+    "message": "在 ChatGPT 側邊欄每個對話下方加入建立時間戳記，一眼看出聊天建立時間！"
+  },
+  "actionTitle": {
+    "message": "時間戳設定"
+  },
+  "popupTitle": {
+    "message": "時間戳設定"
+  },
+  "labelDateFormat": {
+    "message": "日期與時間格式"
+  },
+  "optionFormatLocale": {
+    "message": "系統語系"
+  },
+  "optionFormatISO": {
+    "message": "ISO (2024-12-18 14:30:00)"
+  },
+  "optionFormatUS": {
+    "message": "美式 (12/18/2024 2:30 PM)"
+  },
+  "optionFormatEU": {
+    "message": "歐式 (18/12/2024 14:30)"
+  },
+  "optionFormatUK": {
+    "message": "英式 (18/12/2024 2:30 PM)"
+  },
+  "optionFormatRelative": {
+    "message": "相對時間 (2 小時前)"
+  },
+  "optionFormatShort": {
+    "message": "簡短 (12 月 18 日 下午 2:30)"
+  },
+  "optionFormatDateOnly": {
+    "message": "僅日期 (2024 年 12 月 18 日)"
+  },
+  "optionFormatTimeOnly": {
+    "message": "僅時間 (下午 2:30)"
+  },
+  "labelDisplay": {
+    "message": "顯示"
+  },
+  "optionDisplayCreated": {
+    "message": "建立時間"
+  },
+  "optionDisplayUpdated": {
+    "message": "更新時間"
+  },
+  "labelHoverEnabled": {
+    "message": "滑鼠懸停時顯示額外時間"
+  },
+  "labelChatTimestampEnabled": {
+    "message": "顯示訊息時間"
+  },
+  "labelChatTimestampPosition": {
+    "message": "訊息時間顯示位置"
+  },
+  "optionPositionLeft": {
+    "message": "靠左"
+  },
+  "optionPositionCenter": {
+    "message": "置中"
+  },
+  "optionPositionRight": {
+    "message": "靠右"
+  },
+  "previewLabel": {
+    "message": "預覽"
+  },
+  "jumpToTurnLabel": {
+    "message": "跳至訊息回合"
+  },
+  "jumpToTurnButton": {
+    "message": "前往"
+  },
+  "exportChatLabel": {
+    "message": "匯出聊天（不支援圖片與檔案）"
+  },
+  "exportFormatMarkdown": {
+    "message": "Markdown"
+  },
+  "exportFormatPlain": {
+    "message": "純文字"
+  },
+  "exportFormatJson": {
+    "message": "JSON"
+  },
+  "exportCopyButton": {
+    "message": "📋 複製"
+  },
+  "resetButton": {
+    "message": "還原預設值"
+  },
+  "statusSaved": {
+    "message": "已儲存 ✓"
+  },
+  "previewHover": {
+    "message": "(懸停：$1)",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      }
+    }
+  },
+  "scrollInvalidTurn": {
+    "message": "請輸入有效的回合編號"
+  },
+  "scrollSuccess": {
+    "message": "已捲動到回合 #$1",
+    "placeholders": {
+      "turnIndex": {
+        "content": "$1"
+      }
+    }
+  },
+  "scrollConnectError": {
+    "message": "無法連線到頁面"
+  },
+  "scrollTurnNotFound": {
+    "message": "找不到回合"
+  },
+  "exportNoActiveTab": {
+    "message": "找不到使用中的分頁"
+  },
+  "exportExporting": {
+    "message": "正在匯出..."
+  },
+  "exportConnectError": {
+    "message": "無法連線到頁面"
+  },
+  "exportCopySuccess": {
+    "message": "已複製 $1 則訊息！",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "exportCopyFailed": {
+    "message": "無法複製到剪貼簿"
+  },
+  "exportFailed": {
+    "message": "匯出失敗"
+  },
+  "requestTimedOut": {
+    "message": "請求逾時"
+  },
+  "scrollToTurnSuccessTemplate": {
+    "message": "已捲動到回合 #{{turnIndex}}"
+  },
+  "scrollToTurnNotFoundTemplate": {
+    "message": "找不到回合 #{{turnIndex}}"
+  },
+  "exportChatContainerMissing": {
+    "message": "找不到聊天容器"
+  },
+  "exportNoMessages": {
+    "message": "此聊天找不到訊息"
+  },
+  "exportExtractFailed": {
+    "message": "無法擷取訊息內容"
+  },
+  "exportFailedTemplate": {
+    "message": "匯出失敗：{{error}}"
+  },
+  "untitledChat": {
+    "message": "未命名聊天"
+  },
+  "exportCreatedLabel": {
+    "message": "建立"
+  },
+  "exportRoleYou": {
+    "message": "你"
+  },
+  "exportRoleChatgpt": {
+    "message": "ChatGPT"
+  },
+  "exportPlaceholderImage": {
+    "message": "[圖片]"
+  },
+  "exportPlaceholderFileTemplate": {
+    "message": "[檔案：{{fileName}}]"
+  }
+}

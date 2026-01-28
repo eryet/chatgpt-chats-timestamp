@@ -10,6 +10,42 @@ const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
 
+function t(key, substitutions) {
+  if (typeof chrome === "undefined" || !chrome.i18n?.getMessage) {
+    return "";
+  }
+  return chrome.i18n.getMessage(key, substitutions);
+}
+
+function localizePopup() {
+  if (typeof chrome !== "undefined" && chrome.i18n?.getUILanguage) {
+    const uiLang = chrome.i18n.getUILanguage();
+    if (uiLang) {
+      document.documentElement.lang = uiLang;
+    }
+  }
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    if (!key) return;
+    const message = t(key);
+    if (message) {
+      el.textContent = message;
+    }
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (!key) return;
+    const message = t(key);
+    if (message) {
+      el.setAttribute("placeholder", message);
+    }
+  });
+}
+
+localizePopup();
+
 // Default settings
 const defaultSettings = {
   dateFormat: "locale",
@@ -37,12 +73,12 @@ function updatePreview() {
   if (displayMode === "updated") {
     previewPrimary.textContent = updatedText;
     previewSecondary.textContent = hoverEnabled
-      ? `(hover: ${createdText})`
+      ? t("previewHover", [createdText]) || `(hover: ${createdText})`
       : "";
   } else {
     previewPrimary.textContent = createdText;
     previewSecondary.textContent = hoverEnabled
-      ? `(hover: ${updatedText})`
+      ? t("previewHover", [updatedText]) || `(hover: ${updatedText})`
       : "";
   }
 
@@ -116,7 +152,7 @@ function showScrollStatus(message, type = "") {
 scrollToTurnBtn.addEventListener("click", () => {
   const turnIndex = parseInt(turnIndexInput.value, 10);
   if (isNaN(turnIndex) || turnIndex <= 0) {
-    showScrollStatus("Please enter a valid turn number", "error");
+    showScrollStatus(t("scrollInvalidTurn") || "Please enter a valid turn number", "error");
     return;
   }
 
@@ -128,13 +164,21 @@ scrollToTurnBtn.addEventListener("click", () => {
         { type: "SCROLL_TO_TURN", turnIndex: turnIndex },
         (response) => {
           if (chrome.runtime.lastError) {
-            showScrollStatus("Could not connect to page", "error");
+            showScrollStatus(t("scrollConnectError") || "Could not connect to page", "error");
             return;
           }
           if (response?.success) {
-            showScrollStatus(`Scrolled to turn #${turnIndex}`, "success");
+            showScrollStatus(
+              response?.message ||
+                t("scrollSuccess", [turnIndex]) ||
+                `Scrolled to turn #${turnIndex}`,
+              "success"
+            );
           } else {
-            showScrollStatus(response?.message || "Turn not found", "error");
+            showScrollStatus(
+              response?.message || t("scrollTurnNotFound") || "Turn not found",
+              "error"
+            );
           }
         }
       );
@@ -168,11 +212,11 @@ function showExportStatus(message, type = "") {
 exportBtn.addEventListener("click", () => {
   const format = exportFormatSelect.value;
   exportBtn.disabled = true;
-  showExportStatus("Exporting...");
+  showExportStatus(t("exportExporting") || "Exporting...");
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs[0]?.id) {
-      showExportStatus("Could not find active tab", "error");
+      showExportStatus(t("exportNoActiveTab") || "Could not find active tab", "error");
       exportBtn.disabled = false;
       return;
     }
@@ -184,7 +228,7 @@ exportBtn.addEventListener("click", () => {
         exportBtn.disabled = false;
 
         if (chrome.runtime.lastError) {
-          showExportStatus("Could not connect to page", "error");
+          showExportStatus(t("exportConnectError") || "Could not connect to page", "error");
           return;
         }
 
@@ -194,15 +238,22 @@ exportBtn.addEventListener("click", () => {
             .writeText(response.content)
             .then(() => {
               showExportStatus(
-                `Copied ${response.messageCount} messages!`,
+                t("exportCopySuccess", [response.messageCount]) ||
+                  `Copied ${response.messageCount} messages!`,
                 "success"
               );
             })
             .catch(() => {
-              showExportStatus("Failed to copy to clipboard", "error");
+              showExportStatus(
+                t("exportCopyFailed") || "Failed to copy to clipboard",
+                "error"
+              );
             });
         } else {
-          showExportStatus(response?.message || "Export failed", "error");
+          showExportStatus(
+            response?.message || t("exportFailed") || "Export failed",
+            "error"
+          );
         }
       }
     );
