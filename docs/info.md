@@ -161,3 +161,43 @@
 }
 
 ```
+
+### project-chat (class: ps-9)
+
+```json
+{
+  "className": "ps-9",
+  "conversation": {
+    "id": "",
+    "title": "",
+    "create_time": "2025-11-07T09:42:01.352818Z",
+    "update_time": "2025-11-07T11:52:07.399687Z",
+    "pinned_time": null,
+    "mapping": null,
+    "current_node": null,
+    "conversation_template_id": "",
+    "gizmo_id": "",
+    "is_archived": false,
+    "is_starred": null,
+    "is_do_not_remember": false,
+    "memory_scope": "global_enabled",
+    "context_scopes": null,
+    "context_scopes_v2": null,
+    "workspace_id": null,
+    "async_status": null,
+    "safe_urls": "[]",
+    "blocked_urls": "[]",
+    "conversation_origin": null,
+    "snippet": "",
+    "sugar_item_id": null,
+    "sugar_item_visible": false,
+    "owner": {
+      "user_id": "",
+      "user_email": "",
+      "name": "",
+      "avatar_url": ""
+    }
+  },
+  "isActive": false
+}
+```
