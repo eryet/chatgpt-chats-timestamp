@@ -470,35 +470,49 @@ function setHoverExpanded(el, expanded) {
 // #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  // Select both regular chat links (/c/...) and project chat links (/g/g-p-.../c/...)
+  // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
   const links = document.querySelectorAll(
-    'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
+    'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
   );
 
   const primaryColor = isDark ? "#e3e3e3" : "#4B5563";
   const secondaryColor = isDark ? "#81c995" : "#15803D";
 
   links.forEach((el) => {
-    // find fiber and conversation
+    // find fiber and conversation/gizmo data
     const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
     if (!fiberKey) return;
 
     let fiber = el[fiberKey];
     let depth = 0;
     let conversation = null;
+    let gizmo = null;
     while (fiber && depth < 25) {
       const props = fiber.memoizedProps;
       if (props?.conversation?.create_time) {
         conversation = props.conversation;
         break;
       }
+      // Project folders have gizmo.gizmo.created_at
+      if (props?.gizmo?.gizmo?.created_at) {
+        gizmo = props.gizmo.gizmo;
+        break;
+      }
       fiber = fiber.return;
       depth++;
     }
-    if (!conversation?.create_time) return;
 
-    const createdText = formatTimestamp(conversation.create_time);
-    const updatedText = formatTimestamp(conversation.update_time);
+    // Get timestamps from either conversation or gizmo
+    let createdText, updatedText;
+    if (conversation?.create_time) {
+      createdText = formatTimestamp(conversation.create_time);
+      updatedText = formatTimestamp(conversation.update_time);
+    } else if (gizmo?.created_at) {
+      createdText = formatTimestamp(gizmo.created_at);
+      updatedText = formatTimestamp(gizmo.updated_at);
+    } else {
+      return;
+    }
     if (!createdText) return;
 
     // Determine what to show based on settings
@@ -520,8 +534,10 @@ function addSidebarTimestampsFiber() {
       container = document.createElement("div");
       container.className = "timestamp-stack-container";
       // Project chats have ps-9 class which adds extra left padding (36px)
+      // Project folders have an icon, so use same offset (36px)
       const isProjectChat = el.classList.contains("ps-9");
-      const leftOffset = isProjectChat ? "36px" : "10px";
+      const isProjectFolder = el.getAttribute("href")?.endsWith("/project");
+      const leftOffset = isProjectChat || isProjectFolder ? "36px" : "10px";
       container.style.cssText = `
         position: absolute;
         bottom: 4px;
@@ -707,9 +723,9 @@ function addChatTimestamps() {
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
-    // Count both regular chat links and project chat links
+    // Count regular chat links, project chat links, and project folders
     const chatLinks = document.querySelectorAll(
-      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
+      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
     );
     const currentCount = chatLinks.length;
 
