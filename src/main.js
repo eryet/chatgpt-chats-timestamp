@@ -70,7 +70,7 @@ window.addEventListener("message", (event) => {
         type: "SCROLL_TO_TURN_RESULT",
         result: result,
       },
-      window.location.origin
+      window.location.origin,
     );
   }
 
@@ -81,7 +81,7 @@ window.addEventListener("message", (event) => {
         type: "EXPORT_CHAT_RESULT",
         result: result,
       },
-      window.location.origin
+      window.location.origin,
     );
   }
 });
@@ -101,7 +101,7 @@ function scrollToTurn(targetTurnIndex) {
 
     // Use the <article> element which has proper scroll-margin-top for the fixed header
     const articleEl = timestamp.closest(
-      "article[data-testid^='conversation-turn-']"
+      "article[data-testid^='conversation-turn-']",
     );
     if (articleEl) {
       articleEl.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -137,7 +137,10 @@ function exportCurrentChat(format = "markdown") {
 
     // Get conversation metadata from sidebar first (needed for title)
     let conversationMeta = null;
-    const sidebarLinks = document.querySelectorAll('a[href^="/c/"]');
+    // Select both regular chat links and project chat links
+    const sidebarLinks = document.querySelectorAll(
+      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
+    );
     const currentPath = window.location.pathname;
 
     for (const link of sidebarLinks) {
@@ -146,7 +149,7 @@ function exportCurrentChat(format = "markdown") {
         link.classList.contains("bg-token-sidebar-surface-secondary")
       ) {
         const fiberKey = Object.keys(link).find((k) =>
-          k.startsWith("__reactFiber$")
+          k.startsWith("__reactFiber$"),
         );
         if (fiberKey) {
           let fiber = link[fiberKey];
@@ -182,7 +185,7 @@ function exportCurrentChat(format = "markdown") {
       defaultI18n.exportPlaceholderFileTemplate;
     messageDivs.forEach((div) => {
       const fiberKey = Object.keys(div).find((k) =>
-        k.startsWith("__reactFiber$")
+        k.startsWith("__reactFiber$"),
       );
       if (!fiberKey) return;
 
@@ -275,7 +278,7 @@ function exportCurrentChat(format = "markdown") {
         // Remove orphan citation markers
         return content.replace(
           /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
-          ""
+          "",
         );
       }
 
@@ -311,14 +314,14 @@ function exportCurrentChat(format = "markdown") {
         // No valid citations, just clean up markers
         return processedContent.replace(
           /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
-          ""
+          "",
         );
       }
 
       // Replace citation markers with proper formatted links
       // Sort by length descending to match longer patterns first
       const sortedMarkers = [...citationMap.keys()].sort(
-        (a, b) => b.length - a.length
+        (a, b) => b.length - a.length,
       );
 
       for (const marker of sortedMarkers) {
@@ -326,7 +329,7 @@ function exportCurrentChat(format = "markdown") {
         // Create case-insensitive regex for this marker
         const regex = new RegExp(
           marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "gi"
+          "gi",
         );
 
         processedContent = processedContent.replace(regex, () => {
@@ -347,7 +350,7 @@ function exportCurrentChat(format = "markdown") {
       // Clean up any remaining unmatched citation markers
       return processedContent.replace(
         /\s*citeturn\d+search\d+(?:turn\d+search\d+)*/gi,
-        ""
+        "",
       );
     }
 
@@ -379,7 +382,7 @@ function exportCurrentChat(format = "markdown") {
         const processedContent = processCitations(
           msg.content,
           msg.contentReferences,
-          "markdown"
+          "markdown",
         );
         output += `### ${turnStr}${roleLabel}${timeStr}\n\n${processedContent}\n\n---\n\n`;
       });
@@ -400,7 +403,7 @@ function exportCurrentChat(format = "markdown") {
         const processedContent = processCitations(
           msg.content,
           msg.contentReferences,
-          "plain"
+          "plain",
         );
         output += `[${turnStr}${roleLabel}]${timeStr}:\n${processedContent}\n\n`;
       });
@@ -467,32 +470,49 @@ function setHoverExpanded(el, expanded) {
 // #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const links = document.querySelectorAll('a[href^="/c/"]');
+  // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
+  const links = document.querySelectorAll(
+    'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
+  );
 
   const primaryColor = isDark ? "#e3e3e3" : "#4B5563";
   const secondaryColor = isDark ? "#81c995" : "#15803D";
 
   links.forEach((el) => {
-    // find fiber and conversation
+    // find fiber and conversation/gizmo data
     const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
     if (!fiberKey) return;
 
     let fiber = el[fiberKey];
     let depth = 0;
     let conversation = null;
+    let gizmo = null;
     while (fiber && depth < 25) {
       const props = fiber.memoizedProps;
       if (props?.conversation?.create_time) {
         conversation = props.conversation;
         break;
       }
+      // Project folders have gizmo.gizmo.created_at
+      if (props?.gizmo?.gizmo?.created_at) {
+        gizmo = props.gizmo.gizmo;
+        break;
+      }
       fiber = fiber.return;
       depth++;
     }
-    if (!conversation?.create_time) return;
 
-    const createdText = formatTimestamp(conversation.create_time);
-    const updatedText = formatTimestamp(conversation.update_time);
+    // Get timestamps from either conversation or gizmo
+    let createdText, updatedText;
+    if (conversation?.create_time) {
+      createdText = formatTimestamp(conversation.create_time);
+      updatedText = formatTimestamp(conversation.update_time);
+    } else if (gizmo?.created_at) {
+      createdText = formatTimestamp(gizmo.created_at);
+      updatedText = formatTimestamp(gizmo.updated_at);
+    } else {
+      return;
+    }
     if (!createdText) return;
 
     // Determine what to show based on settings
@@ -513,10 +533,15 @@ function addSidebarTimestampsFiber() {
     if (!container) {
       container = document.createElement("div");
       container.className = "timestamp-stack-container";
+      // Project chats have ps-9 class which adds extra left padding (36px)
+      // Project folders have an icon, so use same offset (36px)
+      const isProjectChat = el.classList.contains("ps-9");
+      const isProjectFolder = el.getAttribute("href")?.endsWith("/project");
+      const leftOffset = isProjectChat || isProjectFolder ? "36px" : "10px";
       container.style.cssText = `
         position: absolute;
         bottom: 4px;
-        left: 10px;
+        left: ${leftOffset};
         font-size: 10px;
         font-family: ui-monospace,'SF Mono',Monaco,monospace;
         opacity: 0.9;
@@ -543,7 +568,7 @@ function addSidebarTimestampsFiber() {
 
     const primaryLine = container.querySelector(":scope > .timestamp-primary");
     const secondaryLine = container.querySelector(
-      ":scope > .timestamp-secondary"
+      ":scope > .timestamp-secondary",
     );
     if (!primaryLine || !secondaryLine) return;
 
@@ -592,8 +617,8 @@ function addChatTimestamps() {
     chatTimestampPosition === "left"
       ? "flex-start"
       : chatTimestampPosition === "right"
-      ? "flex-end"
-      : "center";
+        ? "flex-end"
+        : "center";
 
   document.querySelectorAll("div[data-message-id]").forEach((div) => {
     let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
@@ -610,7 +635,7 @@ function addChatTimestamps() {
 
     // Find fiber and traverse upwards to locate message timestamp.
     const fiberKey = Object.keys(div).find((k) =>
-      k.startsWith("__reactFiber$")
+      k.startsWith("__reactFiber$"),
     );
     if (!fiberKey) return;
 
@@ -698,7 +723,10 @@ function addChatTimestamps() {
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
-    const chatLinks = document.querySelectorAll('a[href^="/c/"]');
+    // Count regular chat links, project chat links, and project folders
+    const chatLinks = document.querySelectorAll(
+      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
+    );
     const currentCount = chatLinks.length;
 
     if (currentCount !== lastCount) {
