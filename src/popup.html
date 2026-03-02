@@ -270,6 +270,12 @@
       .export-status.success {
         color: #10a37f;
       }
+      .refresh-hint {
+        font-size: 11px;
+        color: #d97706;
+        margin-top: 4px;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -328,15 +334,22 @@
     </div>
 
     <div class="setting-group">
-      <div class="toggle-row">
-        <span class="toggle-label" data-i18n="labelHoverEnabled"
-          >Show other on hover</span
-        >
-        <label class="toggle-switch">
-          <input type="checkbox" id="hoverEnabled" checked />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
+      <label class="setting-label" for="hoverMode" data-i18n="labelHoverMode"
+        >Hover Mode</label
+      >
+      <select id="hoverMode">
+        <option value="swap" data-i18n="optionHoverSwap">
+          Swap (slide effect)
+        </option>
+        <option value="classic" data-i18n="optionHoverClassic">
+          Classic (show below)
+        </option>
+        <option value="disabled" data-i18n="optionHoverDisabled">
+          Disabled
+        </option>
+      </select>
+      <div class="refresh-hint" id="hoverModeHint" data-i18n="hoverModeRefreshHint"
+        >Refresh the page for best results</div>
     </div>
 
     <div class="setting-group">

@@ -1,14 +1,17 @@
 const formatSelect = document.getElementById("dateFormat");
 const displayModeSelect = document.getElementById("displayMode");
-const hoverEnabledCheckbox = document.getElementById("hoverEnabled");
+const hoverModeSelect = document.getElementById("hoverMode");
 const chatTimestampCheckbox = document.getElementById("chatTimestampEnabled");
 const chatTimestampPositionSelect = document.getElementById(
-  "chatTimestampPosition"
+  "chatTimestampPosition",
 );
 const previewPrimary = document.getElementById("previewPrimary");
 const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
+const hoverModeHint = document.getElementById("hoverModeHint");
+
+let initialHoverMode = null;
 
 function t(key, substitutions) {
   if (typeof chrome === "undefined" || !chrome.i18n?.getMessage) {
@@ -50,7 +53,7 @@ localizePopup();
 const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
-  hoverEnabled: true,
+  hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
 };
@@ -60,7 +63,8 @@ const defaultSettings = {
 function updatePreview() {
   const format = formatSelect.value;
   const displayMode = displayModeSelect.value;
-  const hoverEnabled = hoverEnabledCheckbox.checked;
+  const hoverMode = hoverModeSelect.value;
+  const hoverActive = hoverMode !== "disabled";
 
   const createdDate = new Date();
   createdDate.setDate(createdDate.getDate() - 5);
@@ -72,17 +76,17 @@ function updatePreview() {
 
   if (displayMode === "updated") {
     previewPrimary.textContent = updatedText;
-    previewSecondary.textContent = hoverEnabled
+    previewSecondary.textContent = hoverActive
       ? t("previewHover", [createdText]) || `(hover: ${createdText})`
       : "";
   } else {
     previewPrimary.textContent = createdText;
-    previewSecondary.textContent = hoverEnabled
+    previewSecondary.textContent = hoverActive
       ? t("previewHover", [updatedText]) || `(hover: ${updatedText})`
       : "";
   }
 
-  previewSecondary.style.display = hoverEnabled ? "block" : "none";
+  previewSecondary.style.display = hoverActive ? "block" : "none";
 }
 
 function showStatus() {
@@ -94,7 +98,7 @@ function saveSettings() {
   const settings = {
     dateFormat: formatSelect.value,
     displayMode: displayModeSelect.value,
-    hoverEnabled: hoverEnabledCheckbox.checked,
+    hoverMode: hoverModeSelect.value,
     chatTimestampEnabled: chatTimestampCheckbox.checked,
     chatTimestampPosition: chatTimestampPositionSelect.value,
   };
@@ -107,21 +111,34 @@ function saveSettings() {
 function applySettings(settings) {
   formatSelect.value = settings.dateFormat;
   displayModeSelect.value = settings.displayMode;
-  hoverEnabledCheckbox.checked = settings.hoverEnabled;
+  hoverModeSelect.value = settings.hoverMode;
   chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
   chatTimestampPositionSelect.value = settings.chatTimestampPosition;
   updatePreview();
 }
 
-// Load saved settings
+// Load saved settings (with migration for old hoverEnabled boolean)
 chrome.storage.sync.get(defaultSettings, (result) => {
+  if ("hoverEnabled" in result && !result.hoverMode) {
+    result.hoverMode = result.hoverEnabled ? "swap" : "disabled";
+    chrome.storage.sync.remove("hoverEnabled");
+    chrome.storage.sync.set({ hoverMode: result.hoverMode });
+  }
   applySettings(result);
+  initialHoverMode = result.hoverMode;
 });
 
 // Save on change
 formatSelect.addEventListener("change", saveSettings);
 displayModeSelect.addEventListener("change", saveSettings);
-hoverEnabledCheckbox.addEventListener("change", saveSettings);
+hoverModeSelect.addEventListener("change", () => {
+  saveSettings();
+  if (initialHoverMode !== null && hoverModeSelect.value !== initialHoverMode) {
+    hoverModeHint.style.display = "block";
+  } else {
+    hoverModeHint.style.display = "none";
+  }
+});
 chatTimestampCheckbox.addEventListener("change", saveSettings);
 chatTimestampPositionSelect.addEventListener("change", saveSettings);
 
@@ -152,7 +169,10 @@ function showScrollStatus(message, type = "") {
 scrollToTurnBtn.addEventListener("click", () => {
   const turnIndex = parseInt(turnIndexInput.value, 10);
   if (isNaN(turnIndex) || turnIndex <= 0) {
-    showScrollStatus(t("scrollInvalidTurn") || "Please enter a valid turn number", "error");
+    showScrollStatus(
+      t("scrollInvalidTurn") || "Please enter a valid turn number",
+      "error",
+    );
     return;
   }
 
@@ -164,7 +184,10 @@ scrollToTurnBtn.addEventListener("click", () => {
         { type: "SCROLL_TO_TURN", turnIndex: turnIndex },
         (response) => {
           if (chrome.runtime.lastError) {
-            showScrollStatus(t("scrollConnectError") || "Could not connect to page", "error");
+            showScrollStatus(
+              t("scrollConnectError") || "Could not connect to page",
+              "error",
+            );
             return;
           }
           if (response?.success) {
@@ -172,15 +195,15 @@ scrollToTurnBtn.addEventListener("click", () => {
               response?.message ||
                 t("scrollSuccess", [turnIndex]) ||
                 `Scrolled to turn #${turnIndex}`,
-              "success"
+              "success",
             );
           } else {
             showScrollStatus(
               response?.message || t("scrollTurnNotFound") || "Turn not found",
-              "error"
+              "error",
             );
           }
-        }
+        },
       );
     }
   });
@@ -216,7 +239,10 @@ exportBtn.addEventListener("click", () => {
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs[0]?.id) {
-      showExportStatus(t("exportNoActiveTab") || "Could not find active tab", "error");
+      showExportStatus(
+        t("exportNoActiveTab") || "Could not find active tab",
+        "error",
+      );
       exportBtn.disabled = false;
       return;
     }
@@ -228,7 +254,10 @@ exportBtn.addEventListener("click", () => {
         exportBtn.disabled = false;
 
         if (chrome.runtime.lastError) {
-          showExportStatus(t("exportConnectError") || "Could not connect to page", "error");
+          showExportStatus(
+            t("exportConnectError") || "Could not connect to page",
+            "error",
+          );
           return;
         }
 
@@ -240,22 +269,22 @@ exportBtn.addEventListener("click", () => {
               showExportStatus(
                 t("exportCopySuccess", [response.messageCount]) ||
                   `Copied ${response.messageCount} messages!`,
-                "success"
+                "success",
               );
             })
             .catch(() => {
               showExportStatus(
                 t("exportCopyFailed") || "Failed to copy to clipboard",
-                "error"
+                "error",
               );
             });
         } else {
           showExportStatus(
             response?.message || t("exportFailed") || "Export failed",
-            "error"
+            "error",
           );
         }
-      }
+      },
     );
   });
 });

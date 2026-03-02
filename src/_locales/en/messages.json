@@ -50,8 +50,20 @@
   "optionDisplayUpdated": {
     "message": "Updated time"
   },
-  "labelHoverEnabled": {
-    "message": "Show other on hover"
+  "labelHoverMode": {
+    "message": "Hover Mode"
+  },
+  "optionHoverSwap": {
+    "message": "Swap (slide effect)"
+  },
+  "optionHoverClassic": {
+    "message": "Classic (show below)"
+  },
+  "optionHoverDisabled": {
+    "message": "Disabled"
+  },
+  "hoverModeRefreshHint": {
+    "message": "Refresh the page for best results"
   },
   "labelChatTimestampEnabled": {
     "message": "Show chat timestamps"

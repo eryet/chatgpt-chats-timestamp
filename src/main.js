@@ -17,7 +17,7 @@ const defaultI18n = {
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
-  hoverEnabled: true,
+  hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
 };
@@ -459,9 +459,10 @@ function setHoverExpanded(el, expanded) {
   const secondaryEl = container.querySelector(":scope > .timestamp-secondary");
   if (!secondaryEl) return;
 
-  // Only expand if hover is enabled and there's secondary content
+  // Only expand if hover mode is classic and there's secondary content
   const hasSecondary = !!secondaryEl.textContent;
-  const shouldExpand = expanded && hasSecondary && userSettings.hoverEnabled;
+  const shouldExpand =
+    expanded && hasSecondary && userSettings.hoverMode === "classic";
   secondaryEl.style.display = shouldExpand ? "block" : "none";
   el.style.paddingBottom = shouldExpand ? "28px" : "15px";
 }
@@ -516,17 +517,18 @@ function addSidebarTimestampsFiber() {
     if (!createdText) return;
 
     // Determine what to show based on settings
-    const { displayMode, hoverEnabled } = userSettings;
+    const { displayMode, hoverMode } = userSettings;
+    const hoverActive = hoverMode !== "disabled";
 
     let primaryText, secondaryText;
     if (displayMode === "updated") {
       // Show updated time by default, created on hover
       primaryText = updatedText || createdText;
-      secondaryText = hoverEnabled && updatedText ? createdText : "";
+      secondaryText = hoverActive && updatedText ? createdText : "";
     } else {
       // Show created time by default, updated on hover
       primaryText = createdText;
-      secondaryText = hoverEnabled ? updatedText : "";
+      secondaryText = hoverActive ? updatedText : "";
     }
 
     let container = el.querySelector(":scope > .timestamp-stack-container");
@@ -542,6 +544,8 @@ function addSidebarTimestampsFiber() {
         position: absolute;
         bottom: 4px;
         left: ${leftOffset};
+        right: 10px;
+        overflow: hidden;
         font-size: 10px;
         font-family: ui-monospace,'SF Mono',Monaco,monospace;
         opacity: 0.9;
@@ -563,6 +567,7 @@ function addSidebarTimestampsFiber() {
       container.appendChild(secondaryLine);
 
       el.style.position = "relative";
+      el.style.overflow = "hidden";
       el.appendChild(container);
     }
 
@@ -578,13 +583,98 @@ function addSidebarTimestampsFiber() {
     primaryLine.textContent = primaryText;
     secondaryLine.textContent = secondaryText;
 
-    // Handle display based on settings
-    if (!hoverEnabled || !secondaryText) {
-      // No hover - hide secondary
+    // Handle display based on hover mode
+    if (!hoverActive || !secondaryText) {
+      // No hover - hide secondary, reset swap styles
       secondaryLine.style.display = "none";
       el.style.paddingBottom = "15px";
-    } else {
-      // Hover mode - bind handlers
+      primaryLine.style.transition = "none";
+      primaryLine.style.transform = "none";
+      primaryLine.style.opacity = "";
+      secondaryLine.style.opacity = "";
+      container.classList.remove("timestamp-swap-mode");
+    } else if (hoverMode === "swap") {
+      // Swap mode - primary slides up & fades, secondary slides up from below
+      el.style.paddingBottom = "15px";
+      container.classList.add("timestamp-swap-mode");
+      container.style.overflow = "hidden";
+
+      // Primary line setup
+      primaryLine.style.display = "block";
+      primaryLine.style.transition =
+        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+      primaryLine.style.transform = "translateY(0)";
+      primaryLine.style.opacity = "1";
+
+      // Secondary line: stacked on top, starts below
+      secondaryLine.style.position = "absolute";
+      secondaryLine.style.top = "0";
+      secondaryLine.style.left = "0";
+      secondaryLine.style.right = "0";
+      secondaryLine.style.display = "block";
+      secondaryLine.style.transition =
+        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+      secondaryLine.style.transform = "translateY(100%)";
+      secondaryLine.style.opacity = "0";
+
+      if (!el.dataset.timestampSwapBound) {
+        const swapIn = () => {
+          if (userSettings.hoverMode !== "swap") return;
+          const p = el.querySelector(".timestamp-primary");
+          const s = el.querySelector(".timestamp-secondary");
+          if (p) {
+            p.style.transform = "translateY(-100%)";
+            p.style.opacity = "0";
+          }
+          if (s) {
+            s.style.transform = "translateY(0)";
+            s.style.opacity = "1";
+          }
+        };
+        const swapOut = () => {
+          if (userSettings.hoverMode !== "swap") return;
+          const p = el.querySelector(".timestamp-primary");
+          const s = el.querySelector(".timestamp-secondary");
+          if (p) {
+            p.style.transform = "translateY(0)";
+            p.style.opacity = "1";
+          }
+          if (s) {
+            s.style.transform = "translateY(100%)";
+            s.style.opacity = "0";
+          }
+        };
+        el.addEventListener("mouseenter", swapIn);
+        el.addEventListener("mouseleave", swapOut);
+        el.addEventListener("focusin", swapIn);
+        el.addEventListener("focusout", swapOut);
+        el.dataset.timestampSwapBound = "true";
+      }
+
+      // Keep the right state if the loop runs while hovered
+      const isHovered = el.matches(":hover");
+      const isFocused = el.contains(document.activeElement);
+      if (isHovered || isFocused) {
+        primaryLine.style.transform = "translateY(-100%)";
+        primaryLine.style.opacity = "0";
+        secondaryLine.style.transform = "translateY(0)";
+        secondaryLine.style.opacity = "1";
+      }
+    } else if (hoverMode === "classic") {
+      // Classic mode - show secondary line below on hover
+      container.classList.remove("timestamp-swap-mode");
+      primaryLine.style.transition = "none";
+      primaryLine.style.transform = "none";
+      primaryLine.style.opacity = "";
+      secondaryLine.style.position = "";
+      secondaryLine.style.top = "";
+      secondaryLine.style.left = "";
+      secondaryLine.style.right = "";
+      secondaryLine.style.transition = "";
+      secondaryLine.style.transform = "";
+      secondaryLine.style.transformOrigin = "";
+      secondaryLine.style.opacity = "";
+
       if (!el.dataset.timestampHoverBound) {
         const expand = () => setHoverExpanded(el, true);
         const collapse = () => setHoverExpanded(el, false);

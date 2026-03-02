@@ -50,8 +50,20 @@
   "optionDisplayUpdated": {
     "message": "更新時間"
   },
-  "labelHoverEnabled": {
-    "message": "滑鼠懸停時顯示額外時間"
+  "labelHoverMode": {
+    "message": "懸停模式"
+  },
+  "optionHoverSwap": {
+    "message": "交換（滑動效果）"
+  },
+  "optionHoverClassic": {
+    "message": "傳統（顯示在下方）"
+  },
+  "optionHoverDisabled": {
+    "message": "停用"
+  },
+  "hoverModeRefreshHint": {
+    "message": "請重新整理頁面以獲得最佳效果"
   },
   "labelChatTimestampEnabled": {
     "message": "顯示訊息時間"
