@@ -17,9 +17,11 @@ const defaultI18n = {
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
-  hoverEnabled: true,
+  hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
+  sidebarFilterMode: "all",
+  starredChats: {},
 };
 
 let userI18n = { ...defaultI18n };
@@ -35,11 +37,35 @@ function formatTemplate(template, values) {
   });
 }
 
+function normalizeStarredChats(value) {
+  return value && typeof value === "object" ? value : {};
+}
+
+function getConversationIdFromHref(href) {
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const chatIndex = segments.indexOf("c");
+    if (chatIndex === -1 || !segments[chatIndex + 1]) {
+      return null;
+    }
+    return decodeURIComponent(segments[chatIndex + 1]);
+  } catch {
+    return null;
+  }
+}
+
+const STAR_ICON_SVG =
+  '<svg viewBox="0 0 16 16" aria-hidden="true" style="display:block;width:100%;height:100%;fill:currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"></path></svg>';
+
 // #region Event Listeners
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
+    userSettings.starredChats = normalizeStarredChats(userSettings.starredChats);
     if (event.data?.i18n) {
       const nextI18n = { ...defaultI18n };
       Object.entries(event.data.i18n).forEach(([key, value]) => {
@@ -459,9 +485,10 @@ function setHoverExpanded(el, expanded) {
   const secondaryEl = container.querySelector(":scope > .timestamp-secondary");
   if (!secondaryEl) return;
 
-  // Only expand if hover is enabled and there's secondary content
+  // Only expand if hover mode is classic and there's secondary content
   const hasSecondary = !!secondaryEl.textContent;
-  const shouldExpand = expanded && hasSecondary && userSettings.hoverEnabled;
+  const shouldExpand =
+    expanded && hasSecondary && userSettings.hoverMode === "classic";
   secondaryEl.style.display = shouldExpand ? "block" : "none";
   el.style.paddingBottom = shouldExpand ? "28px" : "15px";
 }
@@ -470,6 +497,7 @@ function setHoverExpanded(el, expanded) {
 // #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const starredChats = normalizeStarredChats(userSettings.starredChats);
   // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
   const links = document.querySelectorAll(
     'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
@@ -502,6 +530,17 @@ function addSidebarTimestampsFiber() {
       depth++;
     }
 
+    const conversationId =
+      conversation?.id || getConversationIdFromHref(el.getAttribute("href"));
+    const isStarred = Boolean(conversationId && starredChats[conversationId]);
+
+    if (conversationId) {
+      el.style.display =
+        userSettings.sidebarFilterMode === "starred" && !isStarred ? "none" : "";
+    } else {
+      el.style.display = "";
+    }
+
     // Get timestamps from either conversation or gizmo
     let createdText, updatedText;
     if (conversation?.create_time) {
@@ -516,17 +555,18 @@ function addSidebarTimestampsFiber() {
     if (!createdText) return;
 
     // Determine what to show based on settings
-    const { displayMode, hoverEnabled } = userSettings;
+    const { displayMode, hoverMode } = userSettings;
+    const hoverActive = hoverMode !== "disabled";
 
     let primaryText, secondaryText;
     if (displayMode === "updated") {
       // Show updated time by default, created on hover
       primaryText = updatedText || createdText;
-      secondaryText = hoverEnabled && updatedText ? createdText : "";
+      secondaryText = hoverActive && updatedText ? createdText : "";
     } else {
       // Show created time by default, updated on hover
       primaryText = createdText;
-      secondaryText = hoverEnabled ? updatedText : "";
+      secondaryText = hoverActive ? updatedText : "";
     }
 
     let container = el.querySelector(":scope > .timestamp-stack-container");
@@ -542,12 +582,15 @@ function addSidebarTimestampsFiber() {
         position: absolute;
         bottom: 4px;
         left: ${leftOffset};
+        right: 10px;
+        overflow: hidden;
         font-size: 10px;
         font-family: ui-monospace,'SF Mono',Monaco,monospace;
         opacity: 0.9;
         pointer-events: none;
         line-height: 12px;
         white-space: nowrap;
+        padding-right: 14px;
       `;
 
       const secondaryLine = document.createElement("div");
@@ -563,6 +606,7 @@ function addSidebarTimestampsFiber() {
       container.appendChild(secondaryLine);
 
       el.style.position = "relative";
+      el.style.overflow = "hidden";
       el.appendChild(container);
     }
 
@@ -572,19 +616,129 @@ function addSidebarTimestampsFiber() {
     );
     if (!primaryLine || !secondaryLine) return;
 
+    let starBadge = container.querySelector(":scope > .timestamp-star");
+    if (!starBadge) {
+      starBadge = document.createElement("span");
+      starBadge.className = "timestamp-star";
+      starBadge.style.cssText = `
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 11px;
+        height: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: ${isDark ? "#fbbf24" : "#b45309"};
+        opacity: 0.95;
+      `;
+      starBadge.innerHTML = STAR_ICON_SVG;
+      container.appendChild(starBadge);
+    }
+
     primaryLine.style.color = primaryColor;
     secondaryLine.style.color = secondaryColor;
+    primaryLine.style.paddingRight = "14px";
+    secondaryLine.style.paddingRight = "14px";
 
     primaryLine.textContent = primaryText;
     secondaryLine.textContent = secondaryText;
+    starBadge.innerHTML = STAR_ICON_SVG;
+    starBadge.style.display = isStarred ? "flex" : "none";
+    starBadge.style.color = isDark ? "#fbbf24" : "#b45309";
 
-    // Handle display based on settings
-    if (!hoverEnabled || !secondaryText) {
-      // No hover - hide secondary
+    // Handle display based on hover mode
+    if (!hoverActive || !secondaryText) {
+      // No hover - hide secondary, reset swap styles
       secondaryLine.style.display = "none";
       el.style.paddingBottom = "15px";
-    } else {
-      // Hover mode - bind handlers
+      primaryLine.style.transition = "none";
+      primaryLine.style.transform = "none";
+      primaryLine.style.opacity = "";
+      secondaryLine.style.opacity = "";
+      container.classList.remove("timestamp-swap-mode");
+    } else if (hoverMode === "swap") {
+      // Swap mode - primary slides up & fades, secondary slides up from below
+      el.style.paddingBottom = "15px";
+      container.classList.add("timestamp-swap-mode");
+      container.style.overflow = "hidden";
+
+      // Primary line setup
+      primaryLine.style.display = "block";
+      primaryLine.style.transition =
+        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+      primaryLine.style.transform = "translateY(0)";
+      primaryLine.style.opacity = "1";
+
+      // Secondary line: stacked on top, starts below
+      secondaryLine.style.position = "absolute";
+      secondaryLine.style.top = "0";
+      secondaryLine.style.left = "0";
+      secondaryLine.style.right = "0";
+      secondaryLine.style.display = "block";
+      secondaryLine.style.transition =
+        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+      secondaryLine.style.transform = "translateY(100%)";
+      secondaryLine.style.opacity = "0";
+
+      if (!el.dataset.timestampSwapBound) {
+        const swapIn = () => {
+          if (userSettings.hoverMode !== "swap") return;
+          const p = el.querySelector(".timestamp-primary");
+          const s = el.querySelector(".timestamp-secondary");
+          if (p) {
+            p.style.transform = "translateY(-100%)";
+            p.style.opacity = "0";
+          }
+          if (s) {
+            s.style.transform = "translateY(0)";
+            s.style.opacity = "1";
+          }
+        };
+        const swapOut = () => {
+          if (userSettings.hoverMode !== "swap") return;
+          const p = el.querySelector(".timestamp-primary");
+          const s = el.querySelector(".timestamp-secondary");
+          if (p) {
+            p.style.transform = "translateY(0)";
+            p.style.opacity = "1";
+          }
+          if (s) {
+            s.style.transform = "translateY(100%)";
+            s.style.opacity = "0";
+          }
+        };
+        el.addEventListener("mouseenter", swapIn);
+        el.addEventListener("mouseleave", swapOut);
+        el.addEventListener("focusin", swapIn);
+        el.addEventListener("focusout", swapOut);
+        el.dataset.timestampSwapBound = "true";
+      }
+
+      // Keep the right state if the loop runs while hovered
+      const isHovered = el.matches(":hover");
+      const isFocused = el.contains(document.activeElement);
+      if (isHovered || isFocused) {
+        primaryLine.style.transform = "translateY(-100%)";
+        primaryLine.style.opacity = "0";
+        secondaryLine.style.transform = "translateY(0)";
+        secondaryLine.style.opacity = "1";
+      }
+    } else if (hoverMode === "classic") {
+      // Classic mode - show secondary line below on hover
+      container.classList.remove("timestamp-swap-mode");
+      primaryLine.style.transition = "none";
+      primaryLine.style.transform = "none";
+      primaryLine.style.opacity = "";
+      secondaryLine.style.position = "";
+      secondaryLine.style.top = "";
+      secondaryLine.style.left = "";
+      secondaryLine.style.right = "";
+      secondaryLine.style.transition = "";
+      secondaryLine.style.transform = "";
+      secondaryLine.style.transformOrigin = "";
+      secondaryLine.style.opacity = "";
+
       if (!el.dataset.timestampHoverBound) {
         const expand = () => setHoverExpanded(el, true);
         const collapse = () => setHoverExpanded(el, false);

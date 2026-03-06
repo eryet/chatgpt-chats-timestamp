@@ -4,20 +4,22 @@
 const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
-  hoverEnabled: true,
+  hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
+  sidebarFilterMode: "all",
+  starredChats: {},
 };
 
 const i18nTemplates = {
   scrollToTurnSuccessTemplate: chrome.i18n.getMessage(
-    "scrollToTurnSuccessTemplate"
+    "scrollToTurnSuccessTemplate",
   ),
   scrollToTurnNotFoundTemplate: chrome.i18n.getMessage(
-    "scrollToTurnNotFoundTemplate"
+    "scrollToTurnNotFoundTemplate",
   ),
   exportChatContainerMissing: chrome.i18n.getMessage(
-    "exportChatContainerMissing"
+    "exportChatContainerMissing",
   ),
   exportNoMessages: chrome.i18n.getMessage("exportNoMessages"),
   exportExtractFailed: chrome.i18n.getMessage("exportExtractFailed"),
@@ -28,7 +30,7 @@ const i18nTemplates = {
   exportRoleChatgpt: chrome.i18n.getMessage("exportRoleChatgpt"),
   exportPlaceholderImage: chrome.i18n.getMessage("exportPlaceholderImage"),
   exportPlaceholderFileTemplate: chrome.i18n.getMessage(
-    "exportPlaceholderFileTemplate"
+    "exportPlaceholderFileTemplate",
   ),
 };
 
@@ -41,12 +43,26 @@ function sendSettingsToPage(settings) {
       settings: settings,
       i18n: i18nTemplates,
     },
-    window.location.origin
+    window.location.origin,
   );
+}
+
+// Migrate old hoverEnabled boolean to new hoverMode string
+function migrateSettings(result) {
+  if ("hoverEnabled" in result) {
+    if (!("hoverMode" in result) || result.hoverMode === undefined) {
+      result.hoverMode = result.hoverEnabled ? "swap" : "disabled";
+    }
+    delete result.hoverEnabled;
+    chrome.storage.sync.remove("hoverEnabled");
+    chrome.storage.sync.set({ hoverMode: result.hoverMode });
+  }
+  return result;
 }
 
 // Load and send initial settings
 chrome.storage.sync.get(defaultSettings, (result) => {
+  result = migrateSettings(result);
   sendSettingsToPage(result);
 });
 
@@ -61,6 +77,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // Listen for scroll-to-turn requests from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "GET_CHAT_CONTEXT") {
+    sendResponse({
+      success: true,
+      href: window.location.href,
+      title: document.title || "",
+    });
+    return false;
+  }
+
   if (message.type === "SCROLL_TO_TURN") {
     // Forward to main.js via window message and wait for response
     const responseHandler = (event) => {
@@ -87,7 +112,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         type: "SCROLL_TO_TURN",
         turnIndex: message.turnIndex,
       },
-      window.location.origin
+      window.location.origin,
     );
 
     // Return true to indicate async response
@@ -120,7 +145,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         type: "EXPORT_CHAT",
         format: message.format,
       },
-      window.location.origin
+      window.location.origin,
     );
 
     // Return true to indicate async response
