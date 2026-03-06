@@ -20,6 +20,8 @@ let userSettings = {
   hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
+  sidebarFilterMode: "all",
+  starredChats: {},
 };
 
 let userI18n = { ...defaultI18n };
@@ -35,11 +37,35 @@ function formatTemplate(template, values) {
   });
 }
 
+function normalizeStarredChats(value) {
+  return value && typeof value === "object" ? value : {};
+}
+
+function getConversationIdFromHref(href) {
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const chatIndex = segments.indexOf("c");
+    if (chatIndex === -1 || !segments[chatIndex + 1]) {
+      return null;
+    }
+    return decodeURIComponent(segments[chatIndex + 1]);
+  } catch {
+    return null;
+  }
+}
+
+const STAR_ICON_SVG =
+  '<svg viewBox="0 0 16 16" aria-hidden="true" style="display:block;width:100%;height:100%;fill:currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"></path></svg>';
+
 // #region Event Listeners
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
+    userSettings.starredChats = normalizeStarredChats(userSettings.starredChats);
     if (event.data?.i18n) {
       const nextI18n = { ...defaultI18n };
       Object.entries(event.data.i18n).forEach(([key, value]) => {
@@ -471,6 +497,7 @@ function setHoverExpanded(el, expanded) {
 // #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const starredChats = normalizeStarredChats(userSettings.starredChats);
   // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
   const links = document.querySelectorAll(
     'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
@@ -501,6 +528,17 @@ function addSidebarTimestampsFiber() {
       }
       fiber = fiber.return;
       depth++;
+    }
+
+    const conversationId =
+      conversation?.id || getConversationIdFromHref(el.getAttribute("href"));
+    const isStarred = Boolean(conversationId && starredChats[conversationId]);
+
+    if (conversationId) {
+      el.style.display =
+        userSettings.sidebarFilterMode === "starred" && !isStarred ? "none" : "";
+    } else {
+      el.style.display = "";
     }
 
     // Get timestamps from either conversation or gizmo
@@ -552,6 +590,7 @@ function addSidebarTimestampsFiber() {
         pointer-events: none;
         line-height: 12px;
         white-space: nowrap;
+        padding-right: 14px;
       `;
 
       const secondaryLine = document.createElement("div");
@@ -577,11 +616,36 @@ function addSidebarTimestampsFiber() {
     );
     if (!primaryLine || !secondaryLine) return;
 
+    let starBadge = container.querySelector(":scope > .timestamp-star");
+    if (!starBadge) {
+      starBadge = document.createElement("span");
+      starBadge.className = "timestamp-star";
+      starBadge.style.cssText = `
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 11px;
+        height: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: ${isDark ? "#fbbf24" : "#b45309"};
+        opacity: 0.95;
+      `;
+      starBadge.innerHTML = STAR_ICON_SVG;
+      container.appendChild(starBadge);
+    }
+
     primaryLine.style.color = primaryColor;
     secondaryLine.style.color = secondaryColor;
+    primaryLine.style.paddingRight = "14px";
+    secondaryLine.style.paddingRight = "14px";
 
     primaryLine.textContent = primaryText;
     secondaryLine.textContent = secondaryText;
+    starBadge.innerHTML = STAR_ICON_SVG;
+    starBadge.style.display = isStarred ? "flex" : "none";
+    starBadge.style.color = isDark ? "#fbbf24" : "#b45309";
 
     // Handle display based on hover mode
     if (!hoverActive || !secondaryText) {

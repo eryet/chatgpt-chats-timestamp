@@ -11,6 +11,12 @@
   "popupTitle": {
     "message": "Timestamp Settings"
   },
+  "tabFunctionality": {
+    "message": "Functionality"
+  },
+  "tabSettings": {
+    "message": "Settings"
+  },
   "labelDateFormat": {
     "message": "Date & Time Format"
   },
@@ -82,6 +88,57 @@
   },
   "previewLabel": {
     "message": "Preview"
+  },
+  "starCurrentChatLabel": {
+    "message": "Star Current Chat"
+  },
+  "starStateLoading": {
+    "message": "Checking current chat..."
+  },
+  "starCurrentChatStatusLabel": {
+    "message": "Current chat:"
+  },
+  "starStateStarred": {
+    "message": "Starred"
+  },
+  "starStateNotStarred": {
+    "message": "Not starred"
+  },
+  "starStateUnavailable": {
+    "message": "Open a specific chat to use starring"
+  },
+  "starButtonStar": {
+    "message": "Star this chat"
+  },
+  "starButtonUnstar": {
+    "message": "Unstar this chat"
+  },
+  "starFilterLabel": {
+    "message": "Sidebar Filter"
+  },
+  "starFilterAll": {
+    "message": "All chats"
+  },
+  "starFilterStarred": {
+    "message": "Starred only"
+  },
+  "starUnsupportedPage": {
+    "message": "Open a specific ChatGPT conversation first"
+  },
+  "starAddedSuccess": {
+    "message": "Chat added to starred"
+  },
+  "starRemovedSuccess": {
+    "message": "Chat removed from starred"
+  },
+  "starSaveFailed": {
+    "message": "Could not update starred chats"
+  },
+  "starNoConversationSelected": {
+    "message": "No conversation selected"
+  },
+  "starUntitledConversation": {
+    "message": "Untitled conversation"
   },
   "jumpToTurnLabel": {
     "message": "Jump to Chat Turn"

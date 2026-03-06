@@ -7,6 +7,8 @@ const defaultSettings = {
   hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
+  sidebarFilterMode: "all",
+  starredChats: {},
 };
 
 const i18nTemplates = {
@@ -75,6 +77,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // Listen for scroll-to-turn requests from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "GET_CHAT_CONTEXT") {
+    sendResponse({
+      success: true,
+      href: window.location.href,
+      title: document.title || "",
+    });
+    return false;
+  }
+
   if (message.type === "SCROLL_TO_TURN") {
     // Forward to main.js via window message and wait for response
     const responseHandler = (event) => {

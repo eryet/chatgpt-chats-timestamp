@@ -5,13 +5,24 @@ const chatTimestampCheckbox = document.getElementById("chatTimestampEnabled");
 const chatTimestampPositionSelect = document.getElementById(
   "chatTimestampPosition",
 );
+const sidebarFilterModeSelect = document.getElementById("sidebarFilterMode");
 const previewPrimary = document.getElementById("previewPrimary");
 const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
 const hoverModeHint = document.getElementById("hoverModeHint");
+const starStateEl = document.getElementById("starState");
+const starToggleBtn = document.getElementById("starToggleBtn");
+const starToggleLabelEl = document.getElementById("starToggleLabel");
+const starStatusEl = document.getElementById("starStatus");
+const starChatTitleEl = document.getElementById("starChatTitle");
+const tabButtons = document.querySelectorAll("[data-tab-target]");
+const tabPanels = document.querySelectorAll(".tab-panel");
 
 let initialHoverMode = null;
+let currentChatId = null;
+let currentChatTitle = "";
+let starredChats = {};
 
 function t(key, substitutions) {
   if (typeof chrome === "undefined" || !chrome.i18n?.getMessage) {
@@ -56,9 +67,66 @@ const defaultSettings = {
   hoverMode: "swap",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
+  sidebarFilterMode: "all",
+};
+
+const storageDefaults = {
+  ...defaultSettings,
+  starredChats: {},
 };
 
 // formatDate and getRelativeTime are loaded from utils.js
+
+function normalizeStarredChats(value) {
+  return value && typeof value === "object" ? value : {};
+}
+
+function stripChatSuffix(title) {
+  if (!title) return "";
+  return title.replace(/\s+-\s+ChatGPT$/i, "").trim();
+}
+
+function getConversationIdFromUrl(urlString) {
+  if (!urlString) return null;
+
+  try {
+    const url = new URL(urlString);
+    if (
+      url.hostname !== "chatgpt.com" &&
+      url.hostname !== "chat.openai.com"
+    ) {
+      return null;
+    }
+
+    const segments = url.pathname.split("/").filter(Boolean);
+    const chatIndex = segments.indexOf("c");
+    if (chatIndex === -1 || !segments[chatIndex + 1]) {
+      return null;
+    }
+
+    return decodeURIComponent(segments[chatIndex + 1]);
+  } catch {
+    return null;
+  }
+}
+
+function setActiveTab(targetId) {
+  tabButtons.forEach((button) => {
+    const isActive = button.dataset.tabTarget === targetId;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+
+  tabPanels.forEach((panel) => {
+    panel.classList.toggle("active", panel.id === targetId);
+  });
+}
+
+tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setActiveTab(button.dataset.tabTarget);
+  });
+});
 
 function updatePreview() {
   const format = formatSelect.value;
@@ -101,6 +169,7 @@ function saveSettings() {
     hoverMode: hoverModeSelect.value,
     chatTimestampEnabled: chatTimestampCheckbox.checked,
     chatTimestampPosition: chatTimestampPositionSelect.value,
+    sidebarFilterMode: sidebarFilterModeSelect.value,
   };
   chrome.storage.sync.set(settings, () => {
     updatePreview();
@@ -114,18 +183,22 @@ function applySettings(settings) {
   hoverModeSelect.value = settings.hoverMode;
   chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
   chatTimestampPositionSelect.value = settings.chatTimestampPosition;
+  sidebarFilterModeSelect.value = settings.sidebarFilterMode;
   updatePreview();
 }
 
 // Load saved settings (with migration for old hoverEnabled boolean)
-chrome.storage.sync.get(defaultSettings, (result) => {
+chrome.storage.sync.get(storageDefaults, (result) => {
   if ("hoverEnabled" in result && !result.hoverMode) {
     result.hoverMode = result.hoverEnabled ? "swap" : "disabled";
     chrome.storage.sync.remove("hoverEnabled");
     chrome.storage.sync.set({ hoverMode: result.hoverMode });
   }
+  starredChats = normalizeStarredChats(result.starredChats);
   applySettings(result);
   initialHoverMode = result.hoverMode;
+  refreshStarUi();
+  loadCurrentChatContext();
 });
 
 // Save on change
@@ -141,12 +214,143 @@ hoverModeSelect.addEventListener("change", () => {
 });
 chatTimestampCheckbox.addEventListener("change", saveSettings);
 chatTimestampPositionSelect.addEventListener("change", saveSettings);
+sidebarFilterModeSelect.addEventListener("change", saveSettings);
 
 // Reset to defaults
 resetBtn.addEventListener("click", () => {
   chrome.storage.sync.set(defaultSettings, () => {
     applySettings(defaultSettings);
+    refreshStarUi();
     showStatus();
+  });
+});
+
+function showStarStatus(message, type = "") {
+  starStatusEl.textContent = message;
+  starStatusEl.className = "star-status " + type;
+  if (type === "success") {
+    setTimeout(() => {
+      starStatusEl.textContent = "";
+      starStatusEl.className = "star-status";
+    }, 2000);
+  }
+}
+
+function setStarStateAppearance(label, stateClass) {
+  starStateEl.textContent = label;
+  starStateEl.className = `star-state ${stateClass}`.trim();
+}
+
+function refreshStarUi() {
+  if (!currentChatId) {
+    setStarStateAppearance(
+      t("starStateUnavailable") || "Open a specific chat to use starring",
+      "is-disabled",
+    );
+    starToggleLabelEl.textContent = t("starButtonStar") || "Star this chat";
+    starToggleBtn.disabled = true;
+    starChatTitleEl.textContent =
+      currentChatTitle ||
+      t("starNoConversationSelected") ||
+      "No conversation selected";
+    return;
+  }
+
+  const isStarred = Boolean(starredChats[currentChatId]);
+  const stateValue = isStarred
+    ? t("starStateStarred") || "Starred"
+    : t("starStateNotStarred") || "Not starred";
+  setStarStateAppearance(stateValue, isStarred ? "is-starred" : "is-idle");
+  starToggleLabelEl.textContent =
+    isStarred
+      ? t("starButtonUnstar") || "Unstar this chat"
+      : t("starButtonStar") || "Star this chat";
+  starToggleBtn.disabled = false;
+  starChatTitleEl.textContent =
+    currentChatTitle || t("starUntitledConversation") || "Untitled conversation";
+}
+
+function loadCurrentChatContext() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs[0];
+    if (!activeTab?.id) {
+      currentChatId = null;
+      currentChatTitle = "";
+      showStarStatus(
+        t("starUnsupportedPage") || "Open a specific ChatGPT conversation first",
+        "error",
+      );
+      refreshStarUi();
+      return;
+    }
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { type: "GET_CHAT_CONTEXT" },
+      (response) => {
+        const fallbackId = getConversationIdFromUrl(activeTab.url || "");
+        const fallbackTitle = stripChatSuffix(activeTab.title || "");
+
+        if (chrome.runtime.lastError) {
+          currentChatId = fallbackId;
+          currentChatTitle = fallbackTitle;
+        } else {
+          currentChatId = getConversationIdFromUrl(response?.href || "") || fallbackId;
+          currentChatTitle = stripChatSuffix(response?.title || "") || fallbackTitle;
+        }
+
+        if (!currentChatId) {
+          showStarStatus(
+            t("starUnsupportedPage") ||
+              "Open a specific ChatGPT conversation first",
+            "error",
+          );
+        } else {
+          starStatusEl.textContent = "";
+          starStatusEl.className = "star-status";
+        }
+
+        refreshStarUi();
+      },
+    );
+  });
+}
+
+starToggleBtn.addEventListener("click", () => {
+  if (!currentChatId) return;
+
+  const nextStarredChats = { ...starredChats };
+  const isCurrentlyStarred = Boolean(nextStarredChats[currentChatId]);
+
+  if (isCurrentlyStarred) {
+    delete nextStarredChats[currentChatId];
+  } else {
+    nextStarredChats[currentChatId] = {
+      starredAt: new Date().toISOString(),
+      titleSnapshot: currentChatTitle,
+    };
+  }
+
+  starToggleBtn.disabled = true;
+  chrome.storage.sync.set({ starredChats: nextStarredChats }, () => {
+    if (chrome.runtime.lastError) {
+      starToggleBtn.disabled = false;
+      showStarStatus(
+        chrome.runtime.lastError.message ||
+          (t("starSaveFailed") || "Could not update starred chats"),
+        "error",
+      );
+      return;
+    }
+
+    starredChats = nextStarredChats;
+    refreshStarUi();
+    showStarStatus(
+      isCurrentlyStarred
+        ? t("starRemovedSuccess") || "Chat removed from starred"
+        : t("starAddedSuccess") || "Chat added to starred",
+      "success",
+    );
   });
 });
 

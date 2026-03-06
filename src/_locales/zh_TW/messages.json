@@ -11,6 +11,12 @@
   "popupTitle": {
     "message": "時間戳設定"
   },
+  "tabFunctionality": {
+    "message": "功能"
+  },
+  "tabSettings": {
+    "message": "設定"
+  },
   "labelDateFormat": {
     "message": "日期與時間格式"
   },
@@ -82,6 +88,57 @@
   },
   "previewLabel": {
     "message": "預覽"
+  },
+  "starCurrentChatLabel": {
+    "message": "標記目前聊天"
+  },
+  "starStateLoading": {
+    "message": "正在檢查目前聊天..."
+  },
+  "starCurrentChatStatusLabel": {
+    "message": "目前聊天："
+  },
+  "starStateStarred": {
+    "message": "已加星"
+  },
+  "starStateNotStarred": {
+    "message": "未加星"
+  },
+  "starStateUnavailable": {
+    "message": "請先開啟特定聊天才能加星"
+  },
+  "starButtonStar": {
+    "message": "加入星號"
+  },
+  "starButtonUnstar": {
+    "message": "移除星號"
+  },
+  "starFilterLabel": {
+    "message": "側邊欄篩選"
+  },
+  "starFilterAll": {
+    "message": "所有聊天"
+  },
+  "starFilterStarred": {
+    "message": "僅顯示加星"
+  },
+  "starUnsupportedPage": {
+    "message": "請先開啟特定的 ChatGPT 對話"
+  },
+  "starAddedSuccess": {
+    "message": "已加入星號"
+  },
+  "starRemovedSuccess": {
+    "message": "已移除星號"
+  },
+  "starSaveFailed": {
+    "message": "無法更新加星聊天"
+  },
+  "starNoConversationSelected": {
+    "message": "尚未選取對話"
+  },
+  "starUntitledConversation": {
+    "message": "未命名對話"
   },
   "jumpToTurnLabel": {
     "message": "跳至訊息回合"
