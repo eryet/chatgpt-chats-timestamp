@@ -242,9 +242,10 @@ function setStarStateAppearance(label, stateClass) {
 }
 
 function refreshStarUi() {
+  const starCard = starToggleBtn.closest(".star-card");
   if (!currentChatId) {
     setStarStateAppearance(
-      t("starStateUnavailable") || "Open a specific chat to use starring",
+      t("starUnsupportedPage") || "Open a specific ChatGPT conversation first",
       "is-disabled",
     );
     starToggleLabelEl.textContent = t("starButtonStar") || "Star this chat";
@@ -253,8 +254,10 @@ function refreshStarUi() {
       currentChatTitle ||
       t("starNoConversationSelected") ||
       "No conversation selected";
+    starCard?.classList.add("is-no-chat");
     return;
   }
+  starCard?.classList.remove("is-no-chat");
 
   const isStarred = Boolean(starredChats[currentChatId]);
   const stateValue = isStarred
