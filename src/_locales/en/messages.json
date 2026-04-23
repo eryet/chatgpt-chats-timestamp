@@ -12,7 +12,10 @@
     "message": "Timestamp Settings"
   },
   "tabFunctionality": {
-    "message": "Functionality"
+    "message": "Actions"
+  },
+  "tabBookmarks": {
+    "message": "Bookmarks"
   },
   "tabSettings": {
     "message": "Settings"
@@ -253,5 +256,134 @@
   },
   "exportPlaceholderFileTemplate": {
     "message": "[File: {{fileName}}]"
+  },
+  "bmManageShortcut": {
+    "message": "Manage bookmarks →"
+  },
+  "bmScreenFoldersTitle": {
+    "message": "Bookmarks"
+  },
+  "bmFoldersSectionLabel": {
+    "message": "Folders"
+  },
+  "bmAllBookmarks": {
+    "message": "All bookmarks"
+  },
+  "bmUncategorized": {
+    "message": "Uncategorized"
+  },
+  "bmNewFolderPlaceholder": {
+    "message": "Folder name"
+  },
+  "bmFolderRename": {
+    "message": "Rename"
+  },
+  "bmFolderDelete": {
+    "message": "Delete folder"
+  },
+  "bmFolderNewSubfolder": {
+    "message": "New subfolder"
+  },
+  "bmFolderDeleteConfirm": {
+    "message": "Delete '$1'? Bookmarks will move to Uncategorized.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmFolderDeleteButton": {
+    "message": "Delete"
+  },
+  "bmFolderCancelButton": {
+    "message": "Cancel"
+  },
+  "bmFolderEmptyTitle": {
+    "message": "No bookmarks in this folder"
+  },
+  "bmFolderEmptyHint": {
+    "message": "Move a bookmark here from its detail view."
+  },
+  "bmEmptyStateTitle": {
+    "message": "No bookmarks yet"
+  },
+  "bmEmptyStateHint": {
+    "message": "Star a chat to get started."
+  },
+  "bmDetailOpenChat": {
+    "message": "Open chat"
+  },
+  "bmDetailStarredOnTemplate": {
+    "message": "Starred on $1",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmDetailFolderLabel": {
+    "message": "Folder"
+  },
+  "bmDetailNoteLabel": {
+    "message": "Note"
+  },
+  "bmDetailNotePlaceholder": {
+    "message": "Add a note…"
+  },
+  "bmDetailNoteCharCountTemplate": {
+    "message": "$1 / 500",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmDetailNoteSaving": {
+    "message": "Saving…"
+  },
+  "bmDetailNoteSaved": {
+    "message": "Saved"
+  },
+  "bmDetailNoteSaveFailed": {
+    "message": "Could not save note"
+  },
+  "bmDetailUnstarButton": {
+    "message": "Unstar"
+  },
+  "bmDetailUnstarConfirm": {
+    "message": "Tap again to unstar"
+  },
+  "bmDetailMovedTemplate": {
+    "message": "Moved to $1",
+    "placeholders": {
+      "folder": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmQuotaExceeded": {
+    "message": "Sync storage is full. Delete some bookmarks to free space."
+  },
+  "bmSaveFailed": {
+    "message": "Could not save changes"
+  },
+  "bmUnstarAll": {
+    "message": "Unstar all"
+  },
+  "bmUnstarAllButtonTemplate": {
+    "message": "Unstar all ($1)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmUnstarAllConfirmTemplate": {
+    "message": "Unstar all $1 bookmarks? This cannot be undone.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

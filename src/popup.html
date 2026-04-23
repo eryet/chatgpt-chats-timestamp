@@ -38,17 +38,17 @@
       }
       .tab-list {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
         margin-bottom: 14px;
       }
       .tab-btn {
-        padding: 8px 10px;
+        padding: 6px 8px;
         border: 1px solid #d1d5db;
         border-radius: 8px;
         background: #f9fafb;
         color: #4b5563;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         cursor: pointer;
         transition:
@@ -442,6 +442,489 @@
         margin-top: 4px;
         display: none;
       }
+
+      /* Bookmark manager */
+      .bm-manage-shortcut {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 8px;
+        padding: 0;
+        background: none;
+        border: none;
+        color: #b45309;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .bm-manage-shortcut:hover {
+        color: #92400e;
+        text-decoration: underline;
+      }
+      .star-card.is-no-chat .bm-manage-shortcut {
+        display: none;
+      }
+
+      .bm-screen {
+        display: none;
+      }
+      .bm-screen.is-active {
+        display: block;
+      }
+      .bm-screen-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+        min-height: 28px;
+      }
+      .bm-back-btn,
+      .bm-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #4b5563;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .bm-back-btn:hover,
+      .bm-icon-btn:hover {
+        background: #f3f4f6;
+        color: #111827;
+      }
+      .bm-back-btn svg,
+      .bm-icon-btn svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+      .bm-screen-title {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .bm-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6b7280;
+        margin: 8px 0 6px;
+      }
+      .bm-row-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .bm-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 40px;
+        padding: 6px 8px;
+        background: white;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: #1f2937;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .bm-row:hover {
+        background: #f9fafb;
+        border-color: #e5e7eb;
+      }
+      .bm-row-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        color: #9ca3af;
+        flex-shrink: 0;
+      }
+      .bm-row-icon svg {
+        width: 100%;
+        height: 100%;
+        fill: currentColor;
+      }
+      .bm-row.is-folder .bm-row-icon {
+        color: #b45309;
+      }
+      .bm-row-body {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .bm-row-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1f2937;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .bm-row-sub {
+        font-size: 11px;
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .bm-row-suffix {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        color: #9ca3af;
+      }
+      .bm-row-suffix svg {
+        width: 12px;
+        height: 12px;
+        fill: currentColor;
+      }
+      .bm-count {
+        font-size: 10px;
+        font-weight: 600;
+        color: #6b7280;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        padding: 2px 7px;
+        border-radius: 999px;
+        line-height: 1;
+      }
+      .bm-row.is-subfolder {
+        margin-left: 18px;
+      }
+      .bm-inline-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+      }
+      .bm-inline-input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #1f2937;
+      }
+      .bm-inline-input:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .bm-inline-commit,
+      .bm-inline-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        cursor: pointer;
+      }
+      .bm-inline-commit {
+        background: #10a37f;
+        color: white;
+      }
+      .bm-inline-commit:disabled {
+        background: #d1d5db;
+        color: #6b7280;
+        cursor: not-allowed;
+      }
+      .bm-inline-commit:hover:not(:disabled) {
+        background: #0d8a6a;
+      }
+      .bm-inline-cancel {
+        background: white;
+        border-color: #d1d5db;
+        color: #6b7280;
+      }
+      .bm-inline-cancel:hover {
+        background: #f3f4f6;
+        color: #111827;
+      }
+      .bm-inline-commit svg,
+      .bm-inline-cancel svg {
+        width: 12px;
+        height: 12px;
+        fill: currentColor;
+      }
+
+      .bm-overflow-wrap {
+        position: relative;
+        flex-shrink: 0;
+      }
+      .bm-overflow-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        min-width: 140px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        padding: 4px;
+        z-index: 10;
+      }
+      .bm-overflow-menu.is-open {
+        display: block;
+      }
+      .bm-menu-item {
+        display: block;
+        width: 100%;
+        padding: 8px 10px;
+        background: none;
+        border: none;
+        text-align: left;
+        font-size: 12px;
+        color: #1f2937;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .bm-menu-item:hover {
+        background: #f3f4f6;
+      }
+      .bm-menu-item.is-danger {
+        color: #b91c1c;
+      }
+      .bm-menu-item.is-danger:hover {
+        background: #fee2e2;
+      }
+
+      .bm-delete-confirm {
+        padding: 10px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        font-size: 12px;
+        color: #7c2d12;
+      }
+      .bm-delete-confirm-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        justify-content: flex-end;
+      }
+      .bm-btn-sm {
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #d1d5db;
+        background: white;
+        color: #374151;
+        cursor: pointer;
+      }
+      .bm-btn-sm:hover {
+        background: #f3f4f6;
+      }
+      .bm-btn-sm.is-danger {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: white;
+      }
+      .bm-btn-sm.is-danger:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
+      }
+
+      .bm-empty {
+        padding: 20px 12px;
+        text-align: center;
+        background: #f9fafb;
+        border: 1px dashed #e5e7eb;
+        border-radius: 10px;
+      }
+      .bm-empty-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 4px;
+      }
+      .bm-empty-hint {
+        font-size: 11px;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+
+      .bm-detail-card {
+        padding: 12px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+      .bm-detail-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.35;
+        margin-bottom: 4px;
+        word-break: break-word;
+      }
+      .bm-detail-meta {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+      .bm-detail-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #10a37f;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+      }
+      .bm-detail-link:hover {
+        color: #0d8a6a;
+        text-decoration: underline;
+      }
+      .bm-detail-link svg {
+        width: 11px;
+        height: 11px;
+        fill: currentColor;
+      }
+      .bm-field {
+        margin-bottom: 10px;
+      }
+      .bm-field-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 4px;
+      }
+      .bm-note {
+        width: 100%;
+        min-height: 80px;
+        padding: 8px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 12px;
+        color: #1f2937;
+        resize: vertical;
+      }
+      .bm-note:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .bm-note-counter {
+        font-size: 10px;
+        color: #9ca3af;
+        font-variant-numeric: tabular-nums;
+      }
+      .bm-note-counter.is-over {
+        color: #dc2626;
+      }
+      .bm-status {
+        font-size: 11px;
+        margin-top: 4px;
+        min-height: 16px;
+        color: #6b7280;
+      }
+      .bm-status.error {
+        color: #dc2626;
+      }
+      .bm-status.success {
+        color: #10a37f;
+      }
+      .bm-banner {
+        display: none;
+        padding: 8px 10px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        color: #991b1b;
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+      .bm-banner.is-active {
+        display: block;
+      }
+      .bm-btn-danger {
+        width: 100%;
+        padding: 9px 12px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .bm-btn-danger:hover {
+        background: #b91c1c;
+      }
+      .bm-btn-danger.is-confirming {
+        background: #b91c1c;
+      }
+      .bm-list-footer {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: center;
+      }
+      .bm-list-footer[hidden] {
+        display: none;
+      }
+      .bm-unstar-all-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: none;
+        border: 1px solid transparent;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #b91c1c;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .bm-unstar-all-link:hover {
+        background: #fee2e2;
+        border-color: #fecaca;
+      }
+      .bm-unstar-all-link:active {
+        background: #fecaca;
+      }
     </style>
   </head>
   <body>
@@ -462,6 +945,18 @@
         data-i18n="tabFunctionality"
       >
         Functionality
+      </button>
+      <button
+        class="tab-btn"
+        id="bookmarksTabBtn"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        aria-controls="bookmarksPanel"
+        data-tab-target="bookmarksPanel"
+        data-i18n="tabBookmarks"
+      >
+        Bookmarks
       </button>
       <button
         class="tab-btn"
@@ -510,6 +1005,14 @@
           <span id="starToggleLabel">Star this chat</span>
         </button>
         <div class="star-status" id="starStatus"></div>
+        <button
+          type="button"
+          class="bm-manage-shortcut"
+          id="bmManageShortcut"
+          data-i18n="bmManageShortcut"
+        >
+          Manage bookmarks →
+        </button>
       </div>
     </div>
 
@@ -568,6 +1071,171 @@
           </button>
         </div>
         <div class="scroll-status" id="scrollStatus"></div>
+      </div>
+    </section>
+
+    <section
+      class="tab-panel"
+      id="bookmarksPanel"
+      role="tabpanel"
+      aria-labelledby="bookmarksTabBtn"
+    >
+      <div class="bm-banner" id="bmBanner" data-i18n="bmQuotaExceeded">
+        Sync storage is full. Delete some bookmarks to free space.
+      </div>
+
+      <!-- Screen 1: folder list -->
+      <div class="bm-screen is-active" data-bm-screen="folders">
+        <div class="bm-section-header">
+          <span data-i18n="bmFoldersSectionLabel">Folders</span>
+          <button
+            type="button"
+            class="bm-icon-btn"
+            id="bmNewFolderBtn"
+            data-i18n-title="bmNewFolderAria"
+            aria-label="New folder"
+            title="New folder"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M8 2a.75.75 0 0 1 .75.75V7.25h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5V2.75A.75.75 0 0 1 8 2Z"
+              />
+            </svg>
+          </button>
+        </div>
+        <div id="bmFoldersInlineArea"></div>
+        <div id="bmFolderListBody" class="bm-row-list"></div>
+      </div>
+
+      <!-- Screen 2: bookmark list inside a folder -->
+      <div class="bm-screen" data-bm-screen="list">
+        <div class="bm-screen-header">
+          <button
+            type="button"
+            class="bm-back-btn"
+            data-bm-nav-back
+            aria-label="Back"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M10.78 4.22a.75.75 0 0 1 0 1.06L7.56 8.5l3.22 3.22a.75.75 0 1 1-1.06 1.06l-3.75-3.75a.75.75 0 0 1 0-1.06l3.75-3.75a.75.75 0 0 1 1.06 0Z"
+              />
+            </svg>
+          </button>
+          <div class="bm-screen-title" id="bmListTitle"></div>
+          <div class="bm-overflow-wrap" id="bmListOverflowWrap">
+            <button
+              type="button"
+              class="bm-icon-btn"
+              id="bmListOverflowBtn"
+              aria-label="Folder actions"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M3.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm4.5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"
+                />
+              </svg>
+            </button>
+            <div class="bm-overflow-menu" id="bmListOverflowMenu" role="menu">
+              <button
+                type="button"
+                class="bm-menu-item"
+                data-bm-action="rename"
+                data-i18n="bmFolderRename"
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                class="bm-menu-item"
+                data-bm-action="new-subfolder"
+                data-i18n="bmFolderNewSubfolder"
+              >
+                New subfolder
+              </button>
+              <button
+                type="button"
+                class="bm-menu-item is-danger"
+                data-bm-action="delete"
+                data-i18n="bmFolderDelete"
+              >
+                Delete folder
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="bmListInlineArea"></div>
+        <div id="bmListBody" class="bm-row-list"></div>
+        <div class="bm-list-footer" id="bmListFooter" hidden>
+          <button type="button" class="bm-unstar-all-link" id="bmUnstarAllBtn">
+            Unstar all
+          </button>
+        </div>
+      </div>
+
+      <!-- Screen 3: bookmark detail -->
+      <div class="bm-screen" data-bm-screen="detail">
+        <div class="bm-screen-header">
+          <button
+            type="button"
+            class="bm-back-btn"
+            data-bm-nav-back
+            aria-label="Back"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M10.78 4.22a.75.75 0 0 1 0 1.06L7.56 8.5l3.22 3.22a.75.75 0 1 1-1.06 1.06l-3.75-3.75a.75.75 0 0 1 0-1.06l3.75-3.75a.75.75 0 0 1 1.06 0Z"
+              />
+            </svg>
+          </button>
+          <div class="bm-screen-title" data-i18n="bmScreenFoldersTitle">
+            Bookmarks
+          </div>
+        </div>
+        <div class="bm-detail-card">
+          <div class="bm-detail-title" id="bmDetailTitle"></div>
+          <div class="bm-detail-meta" id="bmDetailMeta"></div>
+          <button
+            type="button"
+            class="bm-detail-link"
+            id="bmDetailOpenChat"
+            data-i18n="bmDetailOpenChat"
+          >
+            Open chat
+          </button>
+        </div>
+        <div class="bm-field">
+          <label
+            class="bm-field-label"
+            for="bmDetailFolder"
+            data-i18n="bmDetailFolderLabel"
+            >Folder</label
+          >
+          <select id="bmDetailFolder"></select>
+        </div>
+        <div class="bm-field">
+          <div class="bm-field-label">
+            <span data-i18n="bmDetailNoteLabel">Note</span>
+            <span class="bm-note-counter" id="bmNoteCounter">0 / 500</span>
+          </div>
+          <textarea
+            class="bm-note"
+            id="bmDetailNote"
+            maxlength="500"
+            data-i18n-placeholder="bmDetailNotePlaceholder"
+            placeholder="Add a note…"
+          ></textarea>
+          <div class="bm-status" id="bmNoteStatus"></div>
+        </div>
+        <button
+          type="button"
+          class="bm-btn-danger"
+          id="bmUnstarBtn"
+          data-i18n="bmDetailUnstarButton"
+        >
+          Unstar
+        </button>
+        <div class="bm-status" id="bmDetailStatus"></div>
       </div>
     </section>
 

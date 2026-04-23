@@ -21,7 +21,7 @@ let userSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
-  starredChats: {},
+  starredIds: new Set(),
 };
 
 let userI18n = { ...defaultI18n };
@@ -37,8 +37,10 @@ function formatTemplate(template, values) {
   });
 }
 
-function normalizeStarredChats(value) {
-  return value && typeof value === "object" ? value : {};
+function normalizeStarredIdSet(value) {
+  if (value instanceof Set) return value;
+  if (Array.isArray(value)) return new Set(value);
+  return new Set();
 }
 
 function getConversationIdFromHref(href) {
@@ -65,7 +67,7 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
-    userSettings.starredChats = normalizeStarredChats(userSettings.starredChats);
+    userSettings.starredIds = normalizeStarredIdSet(userSettings.starredIds);
     if (event.data?.i18n) {
       const nextI18n = { ...defaultI18n };
       Object.entries(event.data.i18n).forEach(([key, value]) => {
@@ -497,7 +499,7 @@ function setHoverExpanded(el, expanded) {
 // #region Sidebar
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const starredChats = normalizeStarredChats(userSettings.starredChats);
+  const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
   const links = document.querySelectorAll(
     'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
@@ -532,7 +534,7 @@ function addSidebarTimestampsFiber() {
 
     const conversationId =
       conversation?.id || getConversationIdFromHref(el.getAttribute("href"));
-    const isStarred = Boolean(conversationId && starredChats[conversationId]);
+    const isStarred = Boolean(conversationId && starredIds.has(conversationId));
 
     if (conversationId) {
       el.style.display =

@@ -12,7 +12,10 @@
     "message": "時間戳設定"
   },
   "tabFunctionality": {
-    "message": "功能"
+    "message": "操作"
+  },
+  "tabBookmarks": {
+    "message": "書籤"
   },
   "tabSettings": {
     "message": "設定"
@@ -253,5 +256,134 @@
   },
   "exportPlaceholderFileTemplate": {
     "message": "[檔案：{{fileName}}]"
+  },
+  "bmManageShortcut": {
+    "message": "管理書籤 →"
+  },
+  "bmScreenFoldersTitle": {
+    "message": "書籤"
+  },
+  "bmFoldersSectionLabel": {
+    "message": "資料夾"
+  },
+  "bmAllBookmarks": {
+    "message": "所有書籤"
+  },
+  "bmUncategorized": {
+    "message": "未分類"
+  },
+  "bmNewFolderPlaceholder": {
+    "message": "資料夾名稱"
+  },
+  "bmFolderRename": {
+    "message": "重新命名"
+  },
+  "bmFolderDelete": {
+    "message": "刪除資料夾"
+  },
+  "bmFolderNewSubfolder": {
+    "message": "新增子資料夾"
+  },
+  "bmFolderDeleteConfirm": {
+    "message": "要刪除「$1」嗎？書籤將移到未分類。",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmFolderDeleteButton": {
+    "message": "刪除"
+  },
+  "bmFolderCancelButton": {
+    "message": "取消"
+  },
+  "bmFolderEmptyTitle": {
+    "message": "此資料夾尚無書籤"
+  },
+  "bmFolderEmptyHint": {
+    "message": "可從書籤詳細頁將書籤移到這裡。"
+  },
+  "bmEmptyStateTitle": {
+    "message": "尚無書籤"
+  },
+  "bmEmptyStateHint": {
+    "message": "請先加星標聊天以開始使用。"
+  },
+  "bmDetailOpenChat": {
+    "message": "開啟聊天"
+  },
+  "bmDetailStarredOnTemplate": {
+    "message": "於 $1 加入星號",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmDetailFolderLabel": {
+    "message": "資料夾"
+  },
+  "bmDetailNoteLabel": {
+    "message": "備註"
+  },
+  "bmDetailNotePlaceholder": {
+    "message": "新增備註…"
+  },
+  "bmDetailNoteCharCountTemplate": {
+    "message": "$1 / 500",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmDetailNoteSaving": {
+    "message": "儲存中…"
+  },
+  "bmDetailNoteSaved": {
+    "message": "已儲存"
+  },
+  "bmDetailNoteSaveFailed": {
+    "message": "無法儲存備註"
+  },
+  "bmDetailUnstarButton": {
+    "message": "移除星號"
+  },
+  "bmDetailUnstarConfirm": {
+    "message": "再點一次以確認移除"
+  },
+  "bmDetailMovedTemplate": {
+    "message": "已移到 $1",
+    "placeholders": {
+      "folder": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmQuotaExceeded": {
+    "message": "同步儲存空間已滿，請刪除一些書籤以釋出空間。"
+  },
+  "bmSaveFailed": {
+    "message": "無法儲存變更"
+  },
+  "bmUnstarAll": {
+    "message": "全部移除星號"
+  },
+  "bmUnstarAllButtonTemplate": {
+    "message": "全部移除星號（$1）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bmUnstarAllConfirmTemplate": {
+    "message": "確定要移除全部 $1 則書籤嗎？此操作無法復原。",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

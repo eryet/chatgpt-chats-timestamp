@@ -8,8 +8,11 @@ const defaultSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
-  starredChats: {},
+  bookmarkSchemaVersion: 2,
 };
+
+const BOOKMARK_KEY_PREFIX = "bm_";
+const BOOKMARK_SCHEMA_VERSION = 2;
 
 const i18nTemplates = {
   scrollToTurnSuccessTemplate: chrome.i18n.getMessage(
@@ -36,19 +39,33 @@ const i18nTemplates = {
 
 const requestTimedOutMessage = chrome.i18n.getMessage("requestTimedOut");
 
-function sendSettingsToPage(settings) {
+function sendSettingsToPage(settings, starredIds) {
   window.postMessage(
     {
       type: "TIMESTAMP_SETTINGS_UPDATE",
-      settings: settings,
+      settings: { ...settings, starredIds },
       i18n: i18nTemplates,
     },
     window.location.origin,
   );
 }
 
+function extractStarredIds(allStorage) {
+  const ids = [];
+  for (const key in allStorage) {
+    if (
+      key.startsWith(BOOKMARK_KEY_PREFIX) &&
+      allStorage[key] &&
+      typeof allStorage[key] === "object"
+    ) {
+      ids.push(key.slice(BOOKMARK_KEY_PREFIX.length));
+    }
+  }
+  return ids;
+}
+
 // Migrate old hoverEnabled boolean to new hoverMode string
-function migrateSettings(result) {
+function migrateHoverEnabled(result) {
   if ("hoverEnabled" in result) {
     if (!("hoverMode" in result) || result.hoverMode === undefined) {
       result.hoverMode = result.hoverEnabled ? "swap" : "disabled";
@@ -60,18 +77,78 @@ function migrateSettings(result) {
   return result;
 }
 
+// Migrate v1 starredChats -> v2 per-bookmark bm_<id> items.
+// Idempotent: if bookmarkSchemaVersion === 2 (or higher), returns same result.
+function migrateBookmarksIfNeeded(all, done) {
+  if (all.bookmarkSchemaVersion >= BOOKMARK_SCHEMA_VERSION) {
+    done(all);
+    return;
+  }
+
+  const oldStarred =
+    all.starredChats && typeof all.starredChats === "object"
+      ? all.starredChats
+      : {};
+  const bmItems = {};
+  const now = new Date().toISOString();
+  for (const id in oldStarred) {
+    const entry = oldStarred[id] || {};
+    bmItems[BOOKMARK_KEY_PREFIX + id] = {
+      id,
+      starredAt: entry.starredAt || now,
+      titleSnapshot: entry.titleSnapshot || "",
+      folderId: null,
+      note: "",
+      updatedAt: entry.starredAt || now,
+    };
+  }
+
+  const patch = {
+    ...bmItems,
+    bookmarkFolders: all.bookmarkFolders || {},
+    bookmarkSchemaVersion: BOOKMARK_SCHEMA_VERSION,
+  };
+
+  chrome.storage.sync.set(patch, () => {
+    if (chrome.runtime.lastError) {
+      console.warn(
+        "[chatgpt-chats-timestamp] bookmark migration set failed:",
+        chrome.runtime.lastError.message,
+      );
+      done(all);
+      return;
+    }
+
+    const finish = () => {
+      chrome.storage.sync.get(null, (fresh) => done(fresh));
+    };
+
+    if ("starredChats" in all) {
+      chrome.storage.sync.remove("starredChats", finish);
+    } else {
+      finish();
+    }
+  });
+}
+
+function readAndDispatch() {
+  chrome.storage.sync.get(null, (all) => {
+    migrateBookmarksIfNeeded(all, (result) => {
+      const withDefaults = { ...defaultSettings, ...result };
+      migrateHoverEnabled(withDefaults);
+      const starredIds = extractStarredIds(result);
+      sendSettingsToPage(withDefaults, starredIds);
+    });
+  });
+}
+
 // Load and send initial settings
-chrome.storage.sync.get(defaultSettings, (result) => {
-  result = migrateSettings(result);
-  sendSettingsToPage(result);
-});
+readAndDispatch();
 
 // Listen for changes and forward to page
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "sync") {
-    chrome.storage.sync.get(defaultSettings, (result) => {
-      sendSettingsToPage(result);
-    });
+    readAndDispatch();
   }
 });
 
