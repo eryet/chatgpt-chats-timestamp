@@ -59,6 +59,42 @@ function getConversationIdFromHref(href) {
   }
 }
 
+function findFirstTitleTextRect(el) {
+  for (const node of el.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (!node.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNode(node);
+      return range.getClientRects()[0] || range.getBoundingClientRect();
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.classList?.contains("timestamp-stack-container")) continue;
+      const rect = findFirstTitleTextRect(node);
+      if (rect) return rect;
+    }
+  }
+  return null;
+}
+
+function linkHasLeadingIcon(el) {
+  // Pinned chats render an icon before the title, which pushes the title
+  // text to the right. Detect by measuring the gap between the link's left
+  // edge and where the title text actually starts. Subtree icon scans give
+  // false positives because regular chats also contain hover-revealed action
+  // icons (menu "...", etc.).
+  try {
+    const linkRect = el.getBoundingClientRect();
+    if (!linkRect.width) return false;
+
+    const titleRect = findFirstTitleTextRect(el);
+    if (!titleRect || !titleRect.width) return false;
+
+    return titleRect.left - linkRect.left >= 24;
+  } catch {
+    return false;
+  }
+}
+
 const STAR_ICON_SVG =
   '<svg viewBox="0 0 16 16" aria-hidden="true" style="display:block;width:100%;height:100%;fill:currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"></path></svg>';
 
@@ -571,15 +607,21 @@ function addSidebarTimestampsFiber() {
       secondaryText = hoverActive ? updatedText : "";
     }
 
+    // Project chats have ps-9 class which adds extra left padding (36px).
+    // Project folders have an icon, so use same offset.
+    // Pinned chats (new sidebar section) have a leading icon inside the link
+    // that pushes the title right without using ps-9 — match the title offset.
+    const isProjectChat = el.classList.contains("ps-9");
+    const isProjectFolder = el.getAttribute("href")?.endsWith("/project");
+    const hasLeadingIcon =
+      !isProjectChat && !isProjectFolder && linkHasLeadingIcon(el);
+    const leftOffset =
+      isProjectChat || isProjectFolder || hasLeadingIcon ? "36px" : "10px";
+
     let container = el.querySelector(":scope > .timestamp-stack-container");
     if (!container) {
       container = document.createElement("div");
       container.className = "timestamp-stack-container";
-      // Project chats have ps-9 class which adds extra left padding (36px)
-      // Project folders have an icon, so use same offset (36px)
-      const isProjectChat = el.classList.contains("ps-9");
-      const isProjectFolder = el.getAttribute("href")?.endsWith("/project");
-      const leftOffset = isProjectChat || isProjectFolder ? "36px" : "10px";
       container.style.cssText = `
         position: absolute;
         bottom: 4px;
@@ -610,6 +652,8 @@ function addSidebarTimestampsFiber() {
       el.style.position = "relative";
       el.style.overflow = "hidden";
       el.appendChild(container);
+    } else if (container.style.left !== leftOffset) {
+      container.style.left = leftOffset;
     }
 
     const primaryLine = container.querySelector(":scope > .timestamp-primary");
