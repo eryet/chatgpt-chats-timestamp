@@ -1,4 +1,8 @@
 # ChatGPT Chats Timestamp
+
+<a title="Users" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/users/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
+<a title="Version" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/v/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
+
 <img alt="ChatGPT Chats Timestamp" src="screenshot/marquee-promo-tile.png" />
 
 See exactly when each conversation was created in the sidebar.
@@ -25,9 +29,6 @@ Quickly navigate to any specific turn in your conversation with the jump-to feat
 • Hover modes – choose how additional timestamp details appear on hover
 • Adjustable timestamp position
 • Support dark mode and light mode
-
-<a title="Users" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/users/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
-<a title="Version" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img src="https://img.shields.io/chrome-web-store/v/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
 
 ## Installation (Manual)
 
