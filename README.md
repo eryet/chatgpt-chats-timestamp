@@ -1,5 +1,5 @@
 # ChatGPT Chats Timestamp
-<img width="1280" height="800" alt="dark" src="https://github.com/user-attachments/assets/e370a2cb-bc50-431a-bf3d-089d87f16831" />
+<img alt="ChatGPT Chats Timestamp" src="screenshot/marquee-promo-tile.png" />
 
 See exactly when each conversation was created in the sidebar.
 
@@ -9,16 +9,20 @@ Install the extension and open ChatGPT – timestamps appear automatically! Clic
 💬 In-Chat Message Timestamps (enabled by default)
 Every message in your conversation displays its timestamp. Don't need it? Easily toggle it off in settings.
 
-🎯 Jump to Message
-Quickly navigate to any specific turn in your conversation with the jump-to feature.
+⭐ Bookmarks with Folders & Notes
+Star any chat for quick access, then organize your bookmarks into folders (up to 2 levels) and add personal notes so you remember why each chat matters. The new "Bookmarks" tab lets you rename folders, move bookmarks between them, jump straight into any saved chat, or wipe a whole view with a single "Unstar all" action.
 
 📋 Export Chat
-Export your entire conversation to clipboard in multiple formats – Markdown, Plain Text, or JSON. Perfect for saving, sharing, or archiving your chats.
+Export your entire conversation to clipboard in multiple formats – Markdown, Plain Text, or JSON.
+Perfect for saving, sharing, or archiving your chats.
+
+🎯 Jump to Message
+Quickly navigate to any specific turn in your conversation with the jump-to feature.
 
 ⚙️ Fully Customizable
 • Multiple date formats – locale-based, relative time ("2 days ago"), or custom
 • Display modes – show created date, last updated, or both
-• Hover details – see additional info on hover
+• Hover modes – choose how additional timestamp details appear on hover
 • Adjustable timestamp position
 • Support dark mode and light mode
 
