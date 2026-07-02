@@ -13,6 +13,9 @@ Install the extension and open ChatGPT – timestamps appear automatically! Clic
 💬 In-Chat Message Timestamps (enabled by default)
 Every message in your conversation displays its timestamp. Don't need it? Easily toggle it off in settings.
 
+👥 Group Chat Support
+Group chats get sidebar timestamps too – created time, with last activity on hover – and can be starred and exported just like regular conversations. (In-chat stamps are skipped there since ChatGPT's group chat UI already shows message times.)
+
 ⭐ Bookmarks with Folders & Notes
 Star any chat for quick access, then organize your bookmarks into folders (up to 2 levels) and add personal notes so you remember why each chat matters. The new "Bookmarks" tab lets you rename folders, move bookmarks between them, jump straight into any saved chat, or wipe a whole view with a single "Unstar all" action.
 

@@ -299,3 +299,59 @@
   "isActive": false
 }
 ```
+
+### group-chat
+
+```json
+{
+  "room": {
+    "id": "",
+    "type": "GROUP_DM",
+    "appSource$": "() => {}",
+    "projectId": null,
+    "name$": "() => {}",
+    "assistantPersonality$": "() => {}",
+    "assistantHeartbeatTaskList$": "() => {}",
+    "members$": "() => {}",
+    "memberProfileSnapshots$": "() => {}",
+    "messages$": "() => {}",
+    "optimisticMessages$": "() => {}",
+    "threadSidebar$": "() => {}",
+    "viewMessages$": "() => {}",
+    "lastReadAt$": "() => {}",
+    "isFetchingMessages$": "() => {}",
+    "hasFetchedBeginning$": "() => {}",
+    "createdAt": "Thu Jul 02 2026 12:00:40 GMT+0800 (Taiwan Standard Time)",
+    "assistantHeartbeats$": "() => {}",
+    "userHeartbeats$": "() => {}",
+    "updatedAt$": "() => {}",
+    "pinned$": "() => {}",
+    "pinnedAt$": "() => {}",
+    "unreadMessageCount$": "() => {}",
+    "shouldAutoRespond$": "() => {}",
+    "groupLink$": "() => {}",
+    "groupLinkShareText$": "() => {}",
+    "shouldInsertHeader$": "() => {}",
+    "creatorAccountUserId$": "() => {}",
+    "fetchSource$": "() => {}",
+    "_oai_internal_roomSystemInstructions": null,
+    "_oai_internal_speakDecisionToolDescription": null
+  },
+  "icon": "a() {}",
+  "showPinnedIndicator": false
+}
+```
+
+```html
+<a tabindex="0" data-active="" data-fill="" class="group __menu-item hoverable" draggable="false" aria-label="Malaysia in August Tips" data-sidebar-item="true" href="/gg/" data-discover="true"><div class="flex min-w-0 grow items-center gap-2.5"><div class="truncate">Malaysia in August Tips</div></div><div class="trailing-pair"><div class="trailing highlight text-token-text-tertiary"><div class="flex items-center space-x-2"><button tabindex="0" data-trailing-button="" class="__menu-item-trailing-btn" aria-label="Open group chat options for Malaysia in August Tips" type="button" id="radix-_r_4o_" aria-haspopup="menu" aria-expanded="false" data-state="closed"><div><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon"><use href="/cdn/assets/sprites-core-16f983c9.svg#f6d0e2" fill="currentColor"></use></svg></div></button></div></div><div class="trailing text-token-text-tertiary" data-trailing-style="default" tabindex="-1"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon-lg text-token-icon-primary -m-0.5 opacity-[0.15]"><use href="/cdn/assets/sprites-core-16f983c9.svg#115ad0" fill="currentColor"></use></svg></div></div></div></a>
+```
+
+#### Verified live (2026-07-02)
+
+- Sidebar links are `a[href^="/gg/<32-hex-room-id>"]` (only the *active* room may render a bare `/gg/` href — use `room.id` from the fiber instead).
+- The `room` prop sits ~5 fibers above the link. All `$`-suffixed fields are **callable getters**: `updatedAt$()` → Date (last activity), `name$()` → string, `pinned$()` → boolean, `hasFetchedBeginning$()` → boolean, `messages$()` → array of loaded messages.
+- ⚠️ `room.createdAt` is the *client-side instantiation time*, not the room's creation time (it changes on every reload and can be later than `updatedAt$()`). The real creation time is `messages$()[0].createdAt` (the "X created the group chat" system notice) — trust it only when `hasFetchedBeginning$() === true`.
+- Room messages: `div[data-message-id]` still matches; one fiber above each outer div is a `calpicoMessage` prop (`role`: system/user/assistant, `createdAt`: Date, user content: `content.text`, assistant content: `rawMessages[]` with standard `content.parts` + `metadata.content_references`, sender: `accountUserId`).
+- ⚠️ Assistant bubbles nest *inner* `div[data-message-id]` divs (one per rawMessage segment) that carry a fake `turnIndex: 0` via the regular-chat props — anything iterating message divs in a room must skip nested ones (matters for export).
+- The extension deliberately does **not** stamp messages inside group chats: the native room UI already shows message times, and injected full-width stamps break the row-flex bubble layout used for other members' messages (avatar beside a content column).
+- `memberProfileSnapshots$()` stays an **empty array even in a room with 2 members** — don't rely on it. The member directory is `members$()`: array of `{role: "user", accountUserId, name, username, avatarUrl, isBlocked, canMessage}` (verified with a 2-member room; the assistant is not listed).

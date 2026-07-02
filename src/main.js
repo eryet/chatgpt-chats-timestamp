@@ -49,14 +49,127 @@ function getConversationIdFromHref(href) {
   try {
     const url = new URL(href, window.location.origin);
     const segments = url.pathname.split("/").filter(Boolean);
+    // Regular chats live under /c/<id>, group chats under /gg/<id>
     const chatIndex = segments.indexOf("c");
-    if (chatIndex === -1 || !segments[chatIndex + 1]) {
-      return null;
+    if (chatIndex !== -1 && segments[chatIndex + 1]) {
+      return decodeURIComponent(segments[chatIndex + 1]);
     }
-    return decodeURIComponent(segments[chatIndex + 1]);
+    const groupIndex = segments.indexOf("gg");
+    if (groupIndex !== -1 && segments[groupIndex + 1]) {
+      return decodeURIComponent(segments[groupIndex + 1]);
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+// Group chat rooms expose reactive fields as `$`-suffixed getter functions
+// (e.g. updatedAt$, name$). Read one defensively.
+function readRoomSignal(room, key) {
+  const getter = room?.[key];
+  if (typeof getter !== "function") return null;
+  try {
+    return getter.call(room);
+  } catch {
+    return null;
+  }
+}
+
+function isGroupRoom(candidate) {
+  return Boolean(candidate?.id && typeof candidate.updatedAt$ === "function");
+}
+
+// room.createdAt is the client-side instantiation time of the room object,
+// not when the room was created. The earliest loaded message (the "X created
+// the group chat" notice) is the real creation time, but only trust it once
+// the beginning of history has been fetched.
+function getGroupRoomCreatedAt(room) {
+  if (readRoomSignal(room, "hasFetchedBeginning$") !== true) return null;
+  const messages = readRoomSignal(room, "messages$");
+  const first = Array.isArray(messages) ? messages[0] : null;
+  return first?.createdAt || null;
+}
+
+// Regular chat links (/c/...), project chat links (/g/g-p-.../c/...),
+// project folders (/g/g-p-.../project), and group chats (/gg/...)
+const SIDEBAR_LINK_SELECTOR =
+  'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"], a[href^="/gg/"]';
+
+function isGroupChatPath(pathname) {
+  return pathname.split("/").filter(Boolean)[0] === "gg";
+}
+
+// Locate the room object for the currently open group chat by walking the
+// fiber of its sidebar link (rooms are not reachable from message fibers).
+function findGroupRoomForCurrentPath() {
+  const roomId = getConversationIdFromHref(window.location.href);
+  const links = document.querySelectorAll('a[href^="/gg/"]');
+  for (const link of links) {
+    const fiberKey = Object.keys(link).find((k) =>
+      k.startsWith("__reactFiber$"),
+    );
+    if (!fiberKey) continue;
+    let fiber = link[fiberKey];
+    let depth = 0;
+    while (fiber && depth < 25) {
+      const room = fiber.memoizedProps?.room;
+      if (isGroupRoom(room)) {
+        if (!roomId || room.id === roomId) return room;
+        break;
+      }
+      fiber = fiber.return;
+      depth++;
+    }
+  }
+  return null;
+}
+
+// Group chat message prop (internally "calpico") attached one fiber above
+// each div[data-message-id] inside a room.
+function extractGroupMessageFromDiv(div) {
+  const fiberKey = Object.keys(div).find((k) => k.startsWith("__reactFiber$"));
+  if (!fiberKey) return null;
+  let fiber = div[fiberKey];
+  let depth = 0;
+  while (fiber && depth < 15) {
+    const calpicoMessage = fiber.memoizedProps?.calpicoMessage;
+    if (calpicoMessage) return calpicoMessage;
+    fiber = fiber.return;
+    depth++;
+  }
+  return null;
+}
+
+// Map a group message's accountUserId to a member display name, if the
+// room's member profile snapshots expose one.
+function resolveGroupSenderName(calpicoMessage, memberSnapshots) {
+  const accountUserId = calpicoMessage?.accountUserId;
+  if (!accountUserId || !memberSnapshots) return null;
+  let entries;
+  if (memberSnapshots instanceof Map) {
+    entries = [...memberSnapshots.values()];
+  } else if (Array.isArray(memberSnapshots)) {
+    entries = memberSnapshots;
+  } else if (typeof memberSnapshots === "object") {
+    entries = Object.values(memberSnapshots);
+  } else {
+    return null;
+  }
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+    const id =
+      entry.accountUserId ||
+      entry.account_user_id ||
+      entry.userId ||
+      entry.user_id ||
+      entry.id;
+    if (id !== accountUserId) continue;
+    const name = entry.name || entry.displayName || entry.display_name;
+    if (typeof name === "string" && name.trim()) return name.trim();
+    break;
+  }
+  return null;
 }
 
 function findFirstTitleTextRect(el) {
@@ -148,6 +261,7 @@ window.addEventListener("message", (event) => {
       window.location.origin,
     );
   }
+
 });
 // #endregion
 
@@ -199,41 +313,61 @@ function exportCurrentChat(format = "markdown") {
       return { success: false, message: userI18n.exportChatContainerMissing };
     }
 
+    const isGroupChat = isGroupChatPath(window.location.pathname);
+
     // Get conversation metadata from sidebar first (needed for title)
     let conversationMeta = null;
-    // Select both regular chat links and project chat links
-    const sidebarLinks = document.querySelectorAll(
-      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
-    );
-    const currentPath = window.location.pathname;
+    let groupRoom = null;
+    let title;
 
-    for (const link of sidebarLinks) {
-      if (
-        link.getAttribute("href") === currentPath ||
-        link.classList.contains("bg-token-sidebar-surface-secondary")
-      ) {
-        const fiberKey = Object.keys(link).find((k) =>
-          k.startsWith("__reactFiber$"),
-        );
-        if (fiberKey) {
-          let fiber = link[fiberKey];
-          let depth = 0;
-          while (fiber && depth < 25) {
-            const props = fiber.memoizedProps;
-            if (props?.conversation?.create_time) {
-              conversationMeta = props.conversation;
-              break;
-            }
-            fiber = fiber.return;
-            depth++;
-          }
-        }
-        if (conversationMeta) break;
+    if (isGroupChat) {
+      groupRoom = findGroupRoomForCurrentPath();
+      if (groupRoom) {
+        conversationMeta = {
+          create_time: getGroupRoomCreatedAt(groupRoom),
+          update_time: readRoomSignal(groupRoom, "updatedAt$"),
+        };
       }
-    }
+      const roomName = readRoomSignal(groupRoom, "name$");
+      title =
+        (typeof roomName === "string" && roomName.trim()) ||
+        document.title.replace(/\s+-\s+ChatGPT$/i, "").trim() ||
+        userI18n.untitledChat;
+    } else {
+      // Select both regular chat links and project chat links
+      const sidebarLinks = document.querySelectorAll(
+        'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
+      );
+      const currentPath = window.location.pathname;
 
-    // Get conversation title from sidebar metadata
-    const title = conversationMeta?.title?.trim() || userI18n.untitledChat;
+      for (const link of sidebarLinks) {
+        if (
+          link.getAttribute("href") === currentPath ||
+          link.classList.contains("bg-token-sidebar-surface-secondary")
+        ) {
+          const fiberKey = Object.keys(link).find((k) =>
+            k.startsWith("__reactFiber$"),
+          );
+          if (fiberKey) {
+            let fiber = link[fiberKey];
+            let depth = 0;
+            while (fiber && depth < 25) {
+              const props = fiber.memoizedProps;
+              if (props?.conversation?.create_time) {
+                conversationMeta = props.conversation;
+                break;
+              }
+              fiber = fiber.return;
+              depth++;
+            }
+          }
+          if (conversationMeta) break;
+        }
+      }
+
+      // Get conversation title from sidebar metadata
+      title = conversationMeta?.title?.trim() || userI18n.untitledChat;
+    }
 
     // Collect all messages
     const messageDivs = document.querySelectorAll("div[data-message-id]");
@@ -247,90 +381,151 @@ function exportCurrentChat(format = "markdown") {
     const filePlaceholderTemplate =
       userI18n.exportPlaceholderFileTemplate ||
       defaultI18n.exportPlaceholderFileTemplate;
-    messageDivs.forEach((div) => {
-      const fiberKey = Object.keys(div).find((k) =>
-        k.startsWith("__reactFiber$"),
-      );
-      if (!fiberKey) return;
 
-      let fiber = div[fiberKey];
-      let depth = 0;
-      let messageData = null;
-      let turnIndex = null;
-      let contentReferences = [];
+    if (isGroupChat) {
+      // members$ is the live member directory ({accountUserId, name, ...});
+      // memberProfileSnapshots$ stays empty even in populated rooms, so only
+      // use it as a fallback.
+      const members = readRoomSignal(groupRoom, "members$");
+      const memberSnapshots =
+        Array.isArray(members) && members.length > 0
+          ? members
+          : readRoomSignal(groupRoom, "memberProfileSnapshots$");
+      messageDivs.forEach((div) => {
+        // Assistant bubbles nest per-segment divs with their own
+        // data-message-id — only the outermost div is one message.
+        if (div.parentElement?.closest("div[data-message-id]")) return;
+        const calpicoMessage = extractGroupMessageFromDiv(div);
+        // Skip room notices ("X created the group chat")
+        if (!calpicoMessage || calpicoMessage.role === "system") return;
 
-      while (fiber && depth < 150) {
-        const props = fiber.memoizedProps;
-
-        // Get turnIndex
-        if (turnIndex == null && props?.turnIndex != null) {
-          turnIndex = props.turnIndex;
-        }
-
-        // Get message data
-        if (!messageData && props?.message?.content?.parts) {
-          messageData = props.message;
-        }
-
-        // Get content_references for citations
-        if (
-          contentReferences.length === 0 &&
-          props?.message?.metadata?.content_references?.length > 0
-        ) {
-          contentReferences = props.message.metadata.content_references;
-        }
-
-        if (messageData && turnIndex != null) break;
-        fiber = fiber.return;
-        depth++;
-      }
-
-      if (!messageData) return;
-
-      const role = messageData.author?.role || "unknown";
-      // Handle parts that can be strings or objects (like images)
-      const parts = messageData.content?.parts || [];
-      const contentParts = parts.map((part) => {
-        if (typeof part === "string") {
-          return part;
-        }
-        // Handle image/file objects
-        if (part && typeof part === "object") {
-          // Image asset pointer
-          // Note: Image URLs from ChatGPT are not directly viewable (they prompt download)
-          // and require authentication, so we just mark them as [Image] placeholder
-          if (
-            part.asset_pointer ||
-            part.content_type === "image_asset_pointer"
-          ) {
-            return imagePlaceholder;
-          }
-          // File attachment
-          if (part.name && part.content_type) {
-            return formatTemplate(filePlaceholderTemplate, {
-              fileName: part.name,
+        let contentReferences = [];
+        const chunks = [];
+        const rawMessages = Array.isArray(calpicoMessage.rawMessages)
+          ? calpicoMessage.rawMessages
+          : [];
+        rawMessages.forEach((raw) => {
+          const parts = raw?.content?.parts;
+          if (Array.isArray(parts)) {
+            parts.forEach((part) => {
+              if (typeof part === "string" && part.trim()) chunks.push(part);
             });
           }
-          // Generic object - skip
-          return "";
-        }
-        return "";
-      });
-      const content = contentParts.filter(Boolean).join("\n");
-      const timestamp = messageData.create_time
-        ? new Date(messageData.create_time * 1000)
-        : null;
+          const refs = raw?.metadata?.content_references;
+          if (Array.isArray(refs) && refs.length > 0) {
+            contentReferences = contentReferences.concat(refs);
+          }
+        });
 
-      if (content.trim()) {
+        let content = chunks.join("\n");
+        if (!content && typeof calpicoMessage.content?.text === "string") {
+          content = calpicoMessage.content.text;
+        }
+        if (!content && typeof calpicoMessage.preview === "string") {
+          content = calpicoMessage.preview;
+        }
+        if (!content.trim()) return;
+
+        let timestamp = calpicoMessage.createdAt
+          ? new Date(calpicoMessage.createdAt)
+          : null;
+        if (timestamp && Number.isNaN(timestamp.getTime())) timestamp = null;
+
         messages.push({
-          turnIndex,
-          role,
+          turnIndex: null,
+          role: calpicoMessage.role || "unknown",
+          senderName: resolveGroupSenderName(calpicoMessage, memberSnapshots),
           content: content.trim(),
           timestamp,
           contentReferences,
         });
-      }
-    });
+      });
+    } else {
+      messageDivs.forEach((div) => {
+        const fiberKey = Object.keys(div).find((k) =>
+          k.startsWith("__reactFiber$"),
+        );
+        if (!fiberKey) return;
+
+        let fiber = div[fiberKey];
+        let depth = 0;
+        let messageData = null;
+        let turnIndex = null;
+        let contentReferences = [];
+
+        while (fiber && depth < 150) {
+          const props = fiber.memoizedProps;
+
+          // Get turnIndex
+          if (turnIndex == null && props?.turnIndex != null) {
+            turnIndex = props.turnIndex;
+          }
+
+          // Get message data
+          if (!messageData && props?.message?.content?.parts) {
+            messageData = props.message;
+          }
+
+          // Get content_references for citations
+          if (
+            contentReferences.length === 0 &&
+            props?.message?.metadata?.content_references?.length > 0
+          ) {
+            contentReferences = props.message.metadata.content_references;
+          }
+
+          if (messageData && turnIndex != null) break;
+          fiber = fiber.return;
+          depth++;
+        }
+
+        if (!messageData) return;
+
+        const role = messageData.author?.role || "unknown";
+        // Handle parts that can be strings or objects (like images)
+        const parts = messageData.content?.parts || [];
+        const contentParts = parts.map((part) => {
+          if (typeof part === "string") {
+            return part;
+          }
+          // Handle image/file objects
+          if (part && typeof part === "object") {
+            // Image asset pointer
+            // Note: Image URLs from ChatGPT are not directly viewable (they prompt download)
+            // and require authentication, so we just mark them as [Image] placeholder
+            if (
+              part.asset_pointer ||
+              part.content_type === "image_asset_pointer"
+            ) {
+              return imagePlaceholder;
+            }
+            // File attachment
+            if (part.name && part.content_type) {
+              return formatTemplate(filePlaceholderTemplate, {
+                fileName: part.name,
+              });
+            }
+            // Generic object - skip
+            return "";
+          }
+          return "";
+        });
+        const content = contentParts.filter(Boolean).join("\n");
+        const timestamp = messageData.create_time
+          ? new Date(messageData.create_time * 1000)
+          : null;
+
+        if (content.trim()) {
+          messages.push({
+            turnIndex,
+            role,
+            content: content.trim(),
+            timestamp,
+            contentReferences,
+          });
+        }
+      });
+    }
 
     if (messages.length === 0) {
       return { success: false, message: userI18n.exportExtractFailed };
@@ -429,15 +624,16 @@ function exportCurrentChat(format = "markdown") {
 
     if (format === "markdown") {
       output = `# ${title}\n\n`;
-      if (conversationMeta) {
+      if (conversationMeta?.create_time) {
         const created = new Date(conversationMeta.create_time);
         output += `**${createdLabel}:** ${formatDate(created, dateFormat)}\n\n`;
       }
       output += `---\n\n`;
 
       messages.forEach((msg) => {
-        const roleLabel =
-          msg.role === "user" ? `**${roleYou}**` : `**${roleChatgpt}**`;
+        const senderLabel =
+          msg.senderName || (msg.role === "user" ? roleYou : roleChatgpt);
+        const roleLabel = `**${senderLabel}**`;
         const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` *(${formatDate(msg.timestamp, dateFormat)})*`
@@ -452,13 +648,14 @@ function exportCurrentChat(format = "markdown") {
       });
     } else if (format === "plain") {
       output = `${title}\n${"=".repeat(title.length)}\n\n`;
-      if (conversationMeta) {
+      if (conversationMeta?.create_time) {
         const created = new Date(conversationMeta.create_time);
         output += `${createdLabel}: ${formatDate(created, dateFormat)}\n\n`;
       }
 
       messages.forEach((msg) => {
-        const roleLabel = msg.role === "user" ? roleYou : roleChatgpt;
+        const roleLabel =
+          msg.senderName || (msg.role === "user" ? roleYou : roleChatgpt);
         const turnStr = msg.turnIndex != null ? `#${msg.turnIndex} ` : "";
         const timeStr = msg.timestamp
           ? ` (${formatDate(msg.timestamp, dateFormat)})`
@@ -484,6 +681,7 @@ function exportCurrentChat(format = "markdown") {
         messages: messages.map((msg) => ({
           turn: msg.turnIndex,
           role: msg.role,
+          sender: msg.senderName || null,
           content: processCitations(msg.content, msg.contentReferences, "json"),
           timestamp: msg.timestamp ? msg.timestamp.toISOString() : null,
         })),
@@ -536,10 +734,7 @@ function setHoverExpanded(el, expanded) {
 function addSidebarTimestampsFiber() {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
-  // Select regular chat links (/c/...), project chat links (/g/g-p-.../c/...), and project folders (/g/g-p-.../project)
-  const links = document.querySelectorAll(
-    'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
-  );
+  const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
 
   const primaryColor = isDark ? "#e3e3e3" : "#4B5563";
   const secondaryColor = isDark ? "#81c995" : "#15803D";
@@ -553,6 +748,7 @@ function addSidebarTimestampsFiber() {
     let depth = 0;
     let conversation = null;
     let gizmo = null;
+    let room = null;
     while (fiber && depth < 25) {
       const props = fiber.memoizedProps;
       if (props?.conversation?.create_time) {
@@ -564,12 +760,19 @@ function addSidebarTimestampsFiber() {
         gizmo = props.gizmo.gizmo;
         break;
       }
+      // Group chats (GROUP_DM rooms)
+      if (isGroupRoom(props?.room)) {
+        room = props.room;
+        break;
+      }
       fiber = fiber.return;
       depth++;
     }
 
     const conversationId =
-      conversation?.id || getConversationIdFromHref(el.getAttribute("href"));
+      conversation?.id ||
+      room?.id ||
+      getConversationIdFromHref(el.getAttribute("href"));
     const isStarred = Boolean(conversationId && starredIds.has(conversationId));
 
     if (conversationId) {
@@ -579,7 +782,7 @@ function addSidebarTimestampsFiber() {
       el.style.display = "";
     }
 
-    // Get timestamps from either conversation or gizmo
+    // Get timestamps from conversation, gizmo, or group chat room
     let createdText, updatedText;
     if (conversation?.create_time) {
       createdText = formatTimestamp(conversation.create_time);
@@ -587,6 +790,11 @@ function addSidebarTimestampsFiber() {
     } else if (gizmo?.created_at) {
       createdText = formatTimestamp(gizmo.created_at);
       updatedText = formatTimestamp(gizmo.updated_at);
+    } else if (room) {
+      // Rooms whose history isn't loaded expose no creation time; fall back
+      // to last activity rather than showing nothing (or a bogus date).
+      updatedText = formatTimestamp(readRoomSignal(room, "updatedAt$"));
+      createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
     } else {
       return;
     }
@@ -820,12 +1028,18 @@ function addChatTimestamps() {
         ? "flex-end"
         : "center";
 
+  // Group chat rooms natively show message times, so no stamps are added
+  // there — only clean up leftovers (e.g. added by an older version).
+  const isGroupChat = isGroupChatPath(window.location.pathname);
+
   document.querySelectorAll("div[data-message-id]").forEach((div) => {
     let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
 
     // If chat timestamps are disabled, remove any existing ones and clear marker.
-    if (!chatTimestampEnabled) {
-      if (timestampEl) timestampEl.remove();
+    if (!chatTimestampEnabled || isGroupChat) {
+      div
+        .querySelectorAll(".chatgpt-timestamp")
+        .forEach((el) => el.remove());
       delete div.dataset.timestampAdded;
       return;
     }
@@ -841,7 +1055,7 @@ function addChatTimestamps() {
 
     let fiber = div[fiberKey];
     let depth = 0;
-    let timestampSeconds = null;
+    let date = null;
     let turnIndex = null;
     while (fiber && depth < 150) {
       const props = fiber.memoizedProps;
@@ -851,22 +1065,20 @@ function addChatTimestamps() {
         if (candidateTurnIndex != null) turnIndex = candidateTurnIndex;
       }
 
-      if (timestampSeconds == null) {
+      if (date == null) {
         const messages = props?.messages;
-        const candidate = messages?.[0]?.create_time;
-        if (candidate != null) timestampSeconds = candidate;
+        const candidateSeconds = Number(messages?.[0]?.create_time);
+        if (Number.isFinite(candidateSeconds)) {
+          const candidate = new Date(candidateSeconds * 1000);
+          if (!Number.isNaN(candidate.getTime())) date = candidate;
+        }
       }
 
-      if (timestampSeconds != null && turnIndex != null) break;
+      if (date != null && turnIndex != null) break;
       fiber = fiber.return;
       depth++;
     }
-    if (!timestampSeconds) return;
-
-    const timestampSecondsNumber = Number(timestampSeconds);
-    if (!Number.isFinite(timestampSecondsNumber)) return;
-    const date = new Date(timestampSecondsNumber * 1000);
-    if (Number.isNaN(date.getTime())) return;
+    if (!date) return;
 
     const formatted = formatDate(date, dateFormat);
     if (!formatted) return;
@@ -923,10 +1135,7 @@ function addChatTimestamps() {
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
-    // Count regular chat links, project chat links, and project folders
-    const chatLinks = document.querySelectorAll(
-      'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"]',
-    );
+    const chatLinks = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
     const currentCount = chatLinks.length;
 
     if (currentCount !== lastCount) {

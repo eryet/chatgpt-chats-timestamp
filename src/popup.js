@@ -21,6 +21,7 @@ const tabPanels = document.querySelectorAll(".tab-panel");
 
 let initialHoverMode = null;
 let currentChatId = null;
+let currentChatKind = "chat";
 let currentChatTitle = "";
 let starredIds = new Set();
 
@@ -150,7 +151,8 @@ function stripChatSuffix(title) {
   return title.replace(/\s+-\s+ChatGPT$/i, "").trim();
 }
 
-function getConversationIdFromUrl(urlString) {
+// Returns { id, kind } where kind is "chat" (/c/<id>) or "group" (/gg/<id>).
+function getChatRefFromUrl(urlString) {
   if (!urlString) return null;
 
   try {
@@ -164,11 +166,21 @@ function getConversationIdFromUrl(urlString) {
 
     const segments = url.pathname.split("/").filter(Boolean);
     const chatIndex = segments.indexOf("c");
-    if (chatIndex === -1 || !segments[chatIndex + 1]) {
-      return null;
+    if (chatIndex !== -1 && segments[chatIndex + 1]) {
+      return {
+        id: decodeURIComponent(segments[chatIndex + 1]),
+        kind: "chat",
+      };
+    }
+    const groupIndex = segments.indexOf("gg");
+    if (groupIndex !== -1 && segments[groupIndex + 1]) {
+      return {
+        id: decodeURIComponent(segments[groupIndex + 1]),
+        kind: "group",
+      };
     }
 
-    return decodeURIComponent(segments[chatIndex + 1]);
+    return null;
   } catch {
     return null;
   }
@@ -393,16 +405,19 @@ function loadCurrentChatContext() {
       activeTab.id,
       { type: "GET_CHAT_CONTEXT" },
       (response) => {
-        const fallbackId = getConversationIdFromUrl(activeTab.url || "");
+        const fallbackRef = getChatRefFromUrl(activeTab.url || "");
         const fallbackTitle = stripChatSuffix(activeTab.title || "");
 
+        let ref;
         if (chrome.runtime.lastError) {
-          currentChatId = fallbackId;
+          ref = fallbackRef;
           currentChatTitle = fallbackTitle;
         } else {
-          currentChatId = getConversationIdFromUrl(response?.href || "") || fallbackId;
+          ref = getChatRefFromUrl(response?.href || "") || fallbackRef;
           currentChatTitle = stripChatSuffix(response?.title || "") || fallbackTitle;
         }
+        currentChatId = ref?.id || null;
+        currentChatKind = ref?.kind || "chat";
 
         if (!currentChatId) {
           showStarStatus(
@@ -459,6 +474,7 @@ starToggleBtn.addEventListener("click", () => {
     const now = new Date().toISOString();
     const item = {
       id: currentChatId,
+      kind: currentChatKind,
       starredAt: now,
       titleSnapshot: currentChatTitle,
       folderId: null,
@@ -1544,7 +1560,9 @@ bmDetailNote.addEventListener("blur", () => {
 bmDetailOpenChatBtn.addEventListener("click", () => {
   const id = bmState.bookmarkId;
   if (!id) return;
-  chrome.tabs.create({ url: `https://chatgpt.com/c/${id}` });
+  // Bookmarks saved before group chat support have no kind — those are /c/ chats.
+  const pathPrefix = bmBookmarks[id]?.kind === "group" ? "gg" : "c";
+  chrome.tabs.create({ url: `https://chatgpt.com/${pathPrefix}/${id}` });
 });
 
 bmUnstarBtn.addEventListener("click", handleUnstarClick);
