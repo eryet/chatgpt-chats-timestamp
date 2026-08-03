@@ -353,8 +353,11 @@ function exportCurrentChat(format = "markdown") {
             let depth = 0;
             while (fiber && depth < 25) {
               const props = fiber.memoizedProps;
-              if (props?.conversation?.create_time) {
-                conversationMeta = props.conversation;
+              // Sidebar items pass the conversation as `historyItem` since the
+              // 2026-03 sidebar rework (`conversation` kept for project chats).
+              const candidate = props?.conversation || props?.historyItem;
+              if (candidate?.create_time) {
+                conversationMeta = candidate;
                 break;
               }
               fiber = fiber.return;
@@ -751,8 +754,11 @@ function addSidebarTimestampsFiber() {
     let room = null;
     while (fiber && depth < 25) {
       const props = fiber.memoizedProps;
-      if (props?.conversation?.create_time) {
-        conversation = props.conversation;
+      // Sidebar items pass the conversation as `historyItem` since the
+      // 2026-03 sidebar rework (`conversation` kept for project chats).
+      const candidate = props?.conversation || props?.historyItem;
+      if (candidate?.create_time) {
+        conversation = candidate;
         break;
       }
       // Project folders have gizmo.gizmo.created_at
