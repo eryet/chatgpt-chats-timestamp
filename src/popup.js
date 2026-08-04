@@ -151,6 +151,14 @@ function stripChatSuffix(title) {
   return title.replace(/\s+-\s+ChatGPT$/i, "").trim();
 }
 
+// New chats briefly live at /c/WEB:<uuid>, a client-side draft id (used
+// while the chat — e.g. a Work-surface task — is still being created). The
+// server assigns an unrelated real id, so a draft id must never be
+// bookmarked; the content script resolves it once known.
+function isDraftChatId(id) {
+  return typeof id === "string" && id.startsWith("WEB:");
+}
+
 // Returns { id, kind } where kind is "chat" (/c/<id>) or "group" (/gg/<id>).
 function getChatRefFromUrl(urlString) {
   if (!urlString) return null;
@@ -415,14 +423,29 @@ function loadCurrentChatContext() {
         } else {
           ref = getChatRefFromUrl(response?.href || "") || fallbackRef;
           currentChatTitle = stripChatSuffix(response?.title || "") || fallbackTitle;
+          // The content script resolves WEB: draft ids to the real
+          // conversation id once the server has assigned one.
+          if (response?.conversationId && ref) {
+            ref = { ...ref, id: response.conversationId };
+          }
+        }
+
+        let isDraft = false;
+        if (ref && isDraftChatId(ref.id)) {
+          isDraft = true;
+          ref = null;
+          currentChatTitle = "";
         }
         currentChatId = ref?.id || null;
         currentChatKind = ref?.kind || "chat";
 
         if (!currentChatId) {
           showStarStatus(
-            t("starUnsupportedPage") ||
-              "Open a specific ChatGPT conversation first",
+            isDraft
+              ? t("starChatCreating") ||
+                  "This chat is still being created — try again in a moment"
+              : t("starUnsupportedPage") ||
+                  "Open a specific ChatGPT conversation first",
             "error",
           );
         } else {
@@ -482,72 +505,6 @@ starToggleBtn.addEventListener("click", () => {
       updatedAt: now,
     };
     chrome.storage.sync.set({ [key]: item }, handleResult);
-  }
-});
-
-// Scroll to turn functionality
-const turnIndexInput = document.getElementById("turnIndexInput");
-const scrollToTurnBtn = document.getElementById("scrollToTurnBtn");
-const scrollStatusEl = document.getElementById("scrollStatus");
-
-function showScrollStatus(message, type = "") {
-  scrollStatusEl.textContent = message;
-  scrollStatusEl.className = "scroll-status " + type;
-  if (type === "success") {
-    setTimeout(() => {
-      scrollStatusEl.textContent = "";
-      scrollStatusEl.className = "scroll-status";
-    }, 2000);
-  }
-}
-
-scrollToTurnBtn.addEventListener("click", () => {
-  const turnIndex = parseInt(turnIndexInput.value, 10);
-  if (isNaN(turnIndex) || turnIndex <= 0) {
-    showScrollStatus(
-      t("scrollInvalidTurn") || "Please enter a valid turn number",
-      "error",
-    );
-    return;
-  }
-
-  // Send message to content script to scroll
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { type: "SCROLL_TO_TURN", turnIndex: turnIndex },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            showScrollStatus(
-              t("scrollConnectError") || "Could not connect to page",
-              "error",
-            );
-            return;
-          }
-          if (response?.success) {
-            showScrollStatus(
-              response?.message ||
-                t("scrollSuccess", [turnIndex]) ||
-                `Scrolled to turn #${turnIndex}`,
-              "success",
-            );
-          } else {
-            showScrollStatus(
-              response?.message || t("scrollTurnNotFound") || "Turn not found",
-              "error",
-            );
-          }
-        },
-      );
-    }
-  });
-});
-
-// Allow Enter key to trigger scroll
-turnIndexInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    scrollToTurnBtn.click();
   }
 });
 

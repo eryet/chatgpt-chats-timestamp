@@ -1,7 +1,5 @@
 // #region Settings
 const defaultI18n = {
-  scrollToTurnSuccessTemplate: "Scrolled to turn #{{turnIndex}}",
-  scrollToTurnNotFoundTemplate: "Turn #{{turnIndex}} not found",
   exportChatContainerMissing: "Could not find chat container",
   exportNoMessages: "No messages found in this chat",
   exportExtractFailed: "Could not extract message content",
@@ -64,13 +62,14 @@ function getConversationIdFromHref(href) {
   }
 }
 
-// Group chat rooms expose reactive fields as `$`-suffixed getter functions
-// (e.g. updatedAt$, name$). Read one defensively.
-function readRoomSignal(room, key) {
-  const getter = room?.[key];
+// Group chat rooms and thread conversation objects expose reactive fields as
+// `$`-suffixed getter functions (e.g. updatedAt$, name$, serverId$). Read one
+// defensively.
+function readSignal(obj, key) {
+  const getter = obj?.[key];
   if (typeof getter !== "function") return null;
   try {
-    return getter.call(room);
+    return getter.call(obj);
   } catch {
     return null;
   }
@@ -85,10 +84,56 @@ function isGroupRoom(candidate) {
 // the group chat" notice) is the real creation time, but only trust it once
 // the beginning of history has been fetched.
 function getGroupRoomCreatedAt(room) {
-  if (readRoomSignal(room, "hasFetchedBeginning$") !== true) return null;
-  const messages = readRoomSignal(room, "messages$");
+  if (readSignal(room, "hasFetchedBeginning$") !== true) return null;
+  const messages = readSignal(room, "messages$");
   const first = Array.isArray(messages) ? messages[0] : null;
   return first?.createdAt || null;
+}
+
+// New chats (including ones created on the Work surface) first live at
+// /c/WEB:<uuid> — a client-side draft id. The server then assigns an
+// unrelated real id; the URL flips to it quickly, but the sidebar item's
+// href and fiber props can keep the draft id for minutes.
+const DRAFT_CONVERSATION_ID_PREFIX = "WEB:";
+
+function isDraftConversationId(id) {
+  return typeof id === "string" && id.startsWith(DRAFT_CONVERSATION_ID_PREFIX);
+}
+
+// Draft id -> real server id, observed via recordDraftIdMapping().
+const draftIdMap = new Map();
+
+// Thread views attach a `conversation` object ({id, serverId$, ...}) a few
+// fibers above each div[data-message-id]. For chats created this session,
+// `id` keeps the WEB: draft id while serverId$() yields the real id.
+function findThreadConversation() {
+  const div = document.querySelector("div[data-message-id]");
+  if (!div) return null;
+  const fiberKey = Object.keys(div).find((k) => k.startsWith("__reactFiber$"));
+  if (!fiberKey) return null;
+  let fiber = div[fiberKey];
+  let depth = 0;
+  while (fiber && depth < 30) {
+    const conversation = fiber.memoizedProps?.conversation;
+    if (typeof conversation?.id === "string") return conversation;
+    fiber = fiber.return;
+    depth++;
+  }
+  return null;
+}
+
+function recordDraftIdMapping() {
+  const conversation = findThreadConversation();
+  if (!conversation || !isDraftConversationId(conversation.id)) return;
+  const serverId = readSignal(conversation, "serverId$");
+  if (typeof serverId === "string" && !isDraftConversationId(serverId)) {
+    draftIdMap.set(conversation.id, serverId);
+  }
+}
+
+function resolveConversationId(id) {
+  if (!isDraftConversationId(id)) return id;
+  return draftIdMap.get(id) || id;
 }
 
 // Regular chat links (/c/...), project chat links (/g/g-p-.../c/...),
@@ -172,6 +217,62 @@ function resolveGroupSenderName(calpicoMessage, memberSnapshots) {
   return null;
 }
 
+// First non-empty text inside a sidebar link, skipping the injected
+// timestamp container. Suffix badges ("Work") are separate spans after the
+// title, so the first text node is the title.
+function findFirstTitleText(el) {
+  for (const node of el.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent.trim();
+      if (text) return text;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.classList?.contains("timestamp-stack-container")) continue;
+      const text = findFirstTitleText(node);
+      if (text) return text;
+    }
+  }
+  return null;
+}
+
+// Title as rendered in the sidebar for a conversation id. Fiber titles lag
+// for freshly created chats (null / "New chat"); the DOM shows the real one.
+function getSidebarTitleForConversationId(conversationId) {
+  if (!conversationId) return null;
+  const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
+  for (const el of links) {
+    const linkId = resolveConversationId(
+      getConversationIdFromHref(el.getAttribute("href")),
+    );
+    if (linkId !== conversationId) continue;
+    return findFirstTitleText(el);
+  }
+  return null;
+}
+
+// Chat context for the popup. Resolves WEB: draft ids to the real
+// conversation id so bookmarks are never keyed by a temporary id, and reads
+// the title from the sidebar DOM because document.title stays generic while
+// a chat is being created.
+function getChatContext() {
+  recordDraftIdMapping();
+  const conversationId = resolveConversationId(
+    getConversationIdFromHref(window.location.href),
+  );
+  const isDraft = isDraftConversationId(conversationId);
+  const title =
+    (!isDraft && getSidebarTitleForConversationId(conversationId)) ||
+    document.title ||
+    "";
+  return {
+    success: true,
+    href: window.location.href,
+    title,
+    conversationId: isDraft ? null : conversationId,
+    isDraft,
+  };
+}
+
 function findFirstTitleTextRect(el) {
   for (const node of el.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -240,12 +341,11 @@ window.addEventListener("message", (event) => {
     addChatTimestamps(); // Refresh chat messages with new settings
   }
 
-  if (event.data?.type === "SCROLL_TO_TURN") {
-    const result = scrollToTurn(event.data.turnIndex);
+  if (event.data?.type === "GET_CHAT_CONTEXT") {
     window.postMessage(
       {
-        type: "SCROLL_TO_TURN_RESULT",
-        result: result,
+        type: "GET_CHAT_CONTEXT_RESULT",
+        result: getChatContext(),
       },
       window.location.origin,
     );
@@ -263,45 +363,6 @@ window.addEventListener("message", (event) => {
   }
 
 });
-// #endregion
-
-// #region Scroll
-function scrollToTurn(targetTurnIndex) {
-  const timestamps = document.querySelectorAll(".chatgpt-timestamp");
-
-  for (const timestamp of timestamps) {
-    const turnIndexEl = timestamp.querySelector(".chatgpt-turn-index");
-    const turnText = turnIndexEl?.textContent?.trim();
-    if (!turnText) continue;
-
-    const turnIndex = parseInt(turnText.replace("#", ""), 10);
-    if (turnIndex !== targetTurnIndex) continue;
-
-    // Use the <article> element which has proper scroll-margin-top for the fixed header
-    const articleEl = timestamp.closest(
-      "article[data-testid^='conversation-turn-']",
-    );
-    if (articleEl) {
-      articleEl.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      timestamp.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    return {
-      success: true,
-      message: formatTemplate(userI18n.scrollToTurnSuccessTemplate, {
-        turnIndex: targetTurnIndex,
-      }),
-    };
-  }
-
-  return {
-    success: false,
-    message: formatTemplate(userI18n.scrollToTurnNotFoundTemplate, {
-      turnIndex: targetTurnIndex,
-    }),
-  };
-}
 // #endregion
 
 // #region Export
@@ -325,10 +386,10 @@ function exportCurrentChat(format = "markdown") {
       if (groupRoom) {
         conversationMeta = {
           create_time: getGroupRoomCreatedAt(groupRoom),
-          update_time: readRoomSignal(groupRoom, "updatedAt$"),
+          update_time: readSignal(groupRoom, "updatedAt$"),
         };
       }
-      const roomName = readRoomSignal(groupRoom, "name$");
+      const roomName = readSignal(groupRoom, "name$");
       title =
         (typeof roomName === "string" && roomName.trim()) ||
         document.title.replace(/\s+-\s+ChatGPT$/i, "").trim() ||
@@ -339,9 +400,18 @@ function exportCurrentChat(format = "markdown") {
         'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
       );
       const currentPath = window.location.pathname;
+      // Match on resolved ids too: for freshly created chats the sidebar
+      // href can still hold the WEB: draft id while the URL has the real id.
+      const canonicalId = resolveConversationId(
+        getConversationIdFromHref(window.location.href),
+      );
 
       for (const link of sidebarLinks) {
+        const linkId = resolveConversationId(
+          getConversationIdFromHref(link.getAttribute("href")),
+        );
         if (
+          (canonicalId && linkId === canonicalId) ||
           link.getAttribute("href") === currentPath ||
           link.classList.contains("bg-token-sidebar-surface-secondary")
         ) {
@@ -368,8 +438,13 @@ function exportCurrentChat(format = "markdown") {
         }
       }
 
-      // Get conversation title from sidebar metadata
-      title = conversationMeta?.title?.trim() || userI18n.untitledChat;
+      // Get conversation title from sidebar metadata; freshly created chats
+      // carry a stale fiber title (null / "New chat"), so fall back to the
+      // rendered sidebar text.
+      title =
+        conversationMeta?.title?.trim() ||
+        getSidebarTitleForConversationId(canonicalId) ||
+        userI18n.untitledChat;
     }
 
     // Collect all messages
@@ -389,11 +464,11 @@ function exportCurrentChat(format = "markdown") {
       // members$ is the live member directory ({accountUserId, name, ...});
       // memberProfileSnapshots$ stays empty even in populated rooms, so only
       // use it as a fallback.
-      const members = readRoomSignal(groupRoom, "members$");
+      const members = readSignal(groupRoom, "members$");
       const memberSnapshots =
         Array.isArray(members) && members.length > 0
           ? members
-          : readRoomSignal(groupRoom, "memberProfileSnapshots$");
+          : readSignal(groupRoom, "memberProfileSnapshots$");
       messageDivs.forEach((div) => {
         // Assistant bubbles nest per-segment divs with their own
         // data-message-id — only the outermost div is one message.
@@ -775,10 +850,11 @@ function addSidebarTimestampsFiber() {
       depth++;
     }
 
-    const conversationId =
+    const conversationId = resolveConversationId(
       conversation?.id ||
-      room?.id ||
-      getConversationIdFromHref(el.getAttribute("href"));
+        room?.id ||
+        getConversationIdFromHref(el.getAttribute("href")),
+    );
     const isStarred = Boolean(conversationId && starredIds.has(conversationId));
 
     if (conversationId) {
@@ -799,7 +875,7 @@ function addSidebarTimestampsFiber() {
     } else if (room) {
       // Rooms whose history isn't loaded expose no creation time; fall back
       // to last activity rather than showing nothing (or a bogus date).
-      updatedText = formatTimestamp(readRoomSignal(room, "updatedAt$"));
+      updatedText = formatTimestamp(readSignal(room, "updatedAt$"));
       createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
     } else {
       return;
@@ -1141,6 +1217,10 @@ function addChatTimestamps() {
 function startRehydrationLoop() {
   let lastCount = 0;
   setInterval(() => {
+    // Keep the WEB: draft id -> real id map fresh so sidebar star badges and
+    // popup lookups match chats created this session.
+    recordDraftIdMapping();
+
     const chatLinks = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
     const currentCount = chatLinks.length;
 

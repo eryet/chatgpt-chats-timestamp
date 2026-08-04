@@ -128,6 +128,9 @@
   "starUnsupportedPage": {
     "message": "請先開啟特定的 ChatGPT 對話"
   },
+  "starChatCreating": {
+    "message": "這個對話仍在建立中，請稍後再試"
+  },
   "starAddedSuccess": {
     "message": "已加入星號"
   },
@@ -142,12 +145,6 @@
   },
   "starUntitledConversation": {
     "message": "未命名對話"
-  },
-  "jumpToTurnLabel": {
-    "message": "跳至訊息回合"
-  },
-  "jumpToTurnButton": {
-    "message": "前往"
   },
   "exportChatLabel": {
     "message": "匯出聊天（不支援圖片與檔案）"
@@ -178,23 +175,6 @@
       }
     }
   },
-  "scrollInvalidTurn": {
-    "message": "請輸入有效的回合編號"
-  },
-  "scrollSuccess": {
-    "message": "已捲動到回合 #$1",
-    "placeholders": {
-      "turnIndex": {
-        "content": "$1"
-      }
-    }
-  },
-  "scrollConnectError": {
-    "message": "無法連線到頁面"
-  },
-  "scrollTurnNotFound": {
-    "message": "找不到回合"
-  },
   "exportNoActiveTab": {
     "message": "找不到使用中的分頁"
   },
@@ -220,12 +200,6 @@
   },
   "requestTimedOut": {
     "message": "請求逾時"
-  },
-  "scrollToTurnSuccessTemplate": {
-    "message": "已捲動到回合 #{{turnIndex}}"
-  },
-  "scrollToTurnNotFoundTemplate": {
-    "message": "找不到回合 #{{turnIndex}}"
   },
   "exportChatContainerMissing": {
     "message": "找不到聊天容器"

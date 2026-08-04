@@ -15,12 +15,6 @@ const BOOKMARK_KEY_PREFIX = "bm_";
 const BOOKMARK_SCHEMA_VERSION = 2;
 
 const i18nTemplates = {
-  scrollToTurnSuccessTemplate: chrome.i18n.getMessage(
-    "scrollToTurnSuccessTemplate",
-  ),
-  scrollToTurnNotFoundTemplate: chrome.i18n.getMessage(
-    "scrollToTurnNotFoundTemplate",
-  ),
   exportChatContainerMissing: chrome.i18n.getMessage(
     "exportChatContainerMissing",
   ),
@@ -152,22 +146,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// Listen for scroll-to-turn requests from popup
+// Listen for requests from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_CHAT_CONTEXT") {
-    sendResponse({
-      success: true,
-      href: window.location.href,
-      title: document.title || "",
-    });
-    return false;
-  }
-
-  if (message.type === "SCROLL_TO_TURN") {
-    // Forward to main.js via window message and wait for response
+    // Forward to main.js, which resolves WEB: draft conversation ids and
+    // sidebar titles; fall back to the raw URL/title if it doesn't answer.
     const responseHandler = (event) => {
       if (event.source !== window) return;
-      if (event.data?.type === "SCROLL_TO_TURN_RESULT") {
+      if (event.data?.type === "GET_CHAT_CONTEXT_RESULT") {
         clearTimeout(timeoutId);
         window.removeEventListener("message", responseHandler);
         sendResponse(event.data.result);
@@ -177,20 +163,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const timeoutId = setTimeout(() => {
       window.removeEventListener("message", responseHandler);
       sendResponse({
-        success: false,
-        message: requestTimedOutMessage || "Request timed out",
+        success: true,
+        href: window.location.href,
+        title: document.title || "",
       });
-    }, 5000);
+    }, 1000);
 
     window.addEventListener("message", responseHandler);
 
-    window.postMessage(
-      {
-        type: "SCROLL_TO_TURN",
-        turnIndex: message.turnIndex,
-      },
-      window.location.origin,
-    );
+    window.postMessage({ type: "GET_CHAT_CONTEXT" }, window.location.origin);
 
     // Return true to indicate async response
     return true;

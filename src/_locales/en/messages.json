@@ -128,6 +128,9 @@
   "starUnsupportedPage": {
     "message": "Open a specific ChatGPT conversation first"
   },
+  "starChatCreating": {
+    "message": "This chat is still being created — try again in a moment"
+  },
   "starAddedSuccess": {
     "message": "Chat added to starred"
   },
@@ -142,12 +145,6 @@
   },
   "starUntitledConversation": {
     "message": "Untitled conversation"
-  },
-  "jumpToTurnLabel": {
-    "message": "Jump to Chat Turn"
-  },
-  "jumpToTurnButton": {
-    "message": "Go"
   },
   "exportChatLabel": {
     "message": "Export Chat (Images & files not supported)"
@@ -178,23 +175,6 @@
       }
     }
   },
-  "scrollInvalidTurn": {
-    "message": "Please enter a valid turn number"
-  },
-  "scrollSuccess": {
-    "message": "Scrolled to turn #$1",
-    "placeholders": {
-      "turnIndex": {
-        "content": "$1"
-      }
-    }
-  },
-  "scrollConnectError": {
-    "message": "Could not connect to page"
-  },
-  "scrollTurnNotFound": {
-    "message": "Turn not found"
-  },
   "exportNoActiveTab": {
     "message": "Could not find active tab"
   },
@@ -220,12 +200,6 @@
   },
   "requestTimedOut": {
     "message": "Request timed out"
-  },
-  "scrollToTurnSuccessTemplate": {
-    "message": "Scrolled to turn #{{turnIndex}}"
-  },
-  "scrollToTurnNotFoundTemplate": {
-    "message": "Turn #{{turnIndex}} not found"
   },
   "exportChatContainerMissing": {
     "message": "Could not find chat container"
