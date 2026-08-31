@@ -10,6 +10,27 @@ const previewPrimary = document.getElementById("previewPrimary");
 const previewSecondary = document.getElementById("previewSecondary");
 const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
+const resetColorsBtn = document.getElementById("resetColorsBtn");
+const appearanceStatusEl = document.getElementById("appearanceStatus");
+const colorInputs = {
+  colorSidebarPrimaryLight: document.getElementById("colorSidebarPrimaryLight"),
+  colorSidebarPrimaryDark: document.getElementById("colorSidebarPrimaryDark"),
+  colorSidebarSecondaryLight: document.getElementById(
+    "colorSidebarSecondaryLight",
+  ),
+  colorSidebarSecondaryDark: document.getElementById(
+    "colorSidebarSecondaryDark",
+  ),
+  colorChatLight: document.getElementById("colorChatLight"),
+  colorChatDark: document.getElementById("colorChatDark"),
+};
+const boldSidebarCheckbox = document.getElementById("boldSidebarTimestamp");
+const boldChatCheckbox = document.getElementById("boldChatTimestamp");
+const pageReloadHintEl = document.getElementById("pageReloadHint");
+
+function isChatGptUrl(urlString) {
+  return /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(urlString || "");
+}
 const hoverModeHint = document.getElementById("hoverModeHint");
 const starStateEl = document.getElementById("starState");
 const starToggleBtn = document.getElementById("starToggleBtn");
@@ -23,6 +44,7 @@ let initialHoverMode = null;
 let currentChatId = null;
 let currentChatKind = "chat";
 let currentChatTitle = "";
+let currentChatIsDraft = false;
 let starredIds = new Set();
 
 const BOOKMARK_KEY_PREFIX = "bm_";
@@ -65,6 +87,22 @@ function localizePopup() {
 localizePopup();
 
 // Default settings
+const defaultColors = {
+  colorSidebarPrimaryLight: "#4b5563",
+  colorSidebarPrimaryDark: "#e3e3e3",
+  colorSidebarSecondaryLight: "#15803d",
+  colorSidebarSecondaryDark: "#81c995",
+  colorChatLight: "#4b5563",
+  colorChatDark: "#afafaf",
+};
+
+// Everything the Appearance tab owns (and its reset button restores).
+const defaultAppearance = {
+  ...defaultColors,
+  boldSidebarTimestamp: false,
+  boldChatTimestamp: true,
+};
+
 const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
@@ -72,6 +110,7 @@ const defaultSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
+  ...defaultAppearance,
 };
 
 const storageDefaults = {
@@ -239,11 +278,57 @@ function updatePreview() {
   }
 
   previewSecondary.style.display = hoverActive ? "block" : "none";
+  updateAppearancePreview();
 }
 
-function showStatus() {
-  statusEl.classList.add("show");
-  setTimeout(() => statusEl.classList.remove("show"), 1500);
+function sanitizeColor(value, fallback) {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
+    ? value
+    : fallback;
+}
+
+function updateAppearancePreview() {
+  const format = formatSelect.value;
+  const createdDate = new Date();
+  createdDate.setDate(createdDate.getDate() - 5);
+  const updatedDate = new Date();
+  updatedDate.setHours(updatedDate.getHours() - 2);
+
+  const createdText = formatDate(createdDate, format);
+  const updatedText = formatDate(updatedDate, format);
+  const chatText = `#4 ${updatedText}`;
+
+  const sidebarWeight = boldSidebarCheckbox.checked ? "600" : "400";
+  const chatWeight = boldChatCheckbox.checked ? "600" : "400";
+
+  const samples = [
+    ["apLightSidebarPrimary", "colorSidebarPrimaryLight", createdText, sidebarWeight],
+    ["apLightSidebarSecondary", "colorSidebarSecondaryLight", updatedText, sidebarWeight],
+    ["apLightChat", "colorChatLight", chatText, chatWeight],
+    ["apDarkSidebarPrimary", "colorSidebarPrimaryDark", createdText, sidebarWeight],
+    ["apDarkSidebarSecondary", "colorSidebarSecondaryDark", updatedText, sidebarWeight],
+    ["apDarkChat", "colorChatDark", chatText, chatWeight],
+  ];
+  for (const [elId, colorKey, text, weight] of samples) {
+    const el = document.getElementById(elId);
+    if (!el) continue;
+    el.textContent = text;
+    el.style.color = colorInputs[colorKey]?.value || defaultColors[colorKey];
+    el.style.fontWeight = weight;
+  }
+
+  // Mirror the chat timestamp position setting in the chat section.
+  const pos = chatTimestampPositionSelect.value;
+  const chatAlign = pos === "left" ? "left" : pos === "right" ? "right" : "center";
+  for (const id of ["apLightChat", "apDarkChat"]) {
+    const el = document.getElementById(id);
+    if (el) el.style.textAlign = chatAlign;
+  }
+}
+
+function showStatus(el = statusEl) {
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1500);
 }
 
 function saveSettings() {
@@ -268,6 +353,11 @@ function applySettings(settings) {
   chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
   chatTimestampPositionSelect.value = settings.chatTimestampPosition;
   sidebarFilterModeSelect.value = settings.sidebarFilterMode;
+  for (const key in colorInputs) {
+    colorInputs[key].value = sanitizeColor(settings[key], defaultColors[key]);
+  }
+  boldSidebarCheckbox.checked = settings.boldSidebarTimestamp === true;
+  boldChatCheckbox.checked = settings.boldChatTimestamp !== false;
   updatePreview();
 }
 
@@ -326,6 +416,42 @@ chatTimestampCheckbox.addEventListener("change", saveSettings);
 chatTimestampPositionSelect.addEventListener("change", saveSettings);
 sidebarFilterModeSelect.addEventListener("change", saveSettings);
 
+// Color pickers: live-preview while dragging in the picker ("input"), but
+// only write to storage once the choice is committed ("change") to stay
+// under chrome.storage.sync write quotas.
+function saveAppearanceSettings() {
+  const appearance = {
+    boldSidebarTimestamp: boldSidebarCheckbox.checked,
+    boldChatTimestamp: boldChatCheckbox.checked,
+  };
+  for (const key in colorInputs) {
+    appearance[key] = sanitizeColor(colorInputs[key].value, defaultColors[key]);
+  }
+  chrome.storage.sync.set(appearance, () => {
+    updateAppearancePreview();
+    showStatus(appearanceStatusEl);
+  });
+}
+
+for (const key in colorInputs) {
+  colorInputs[key].addEventListener("input", updateAppearancePreview);
+  colorInputs[key].addEventListener("change", saveAppearanceSettings);
+}
+boldSidebarCheckbox.addEventListener("change", saveAppearanceSettings);
+boldChatCheckbox.addEventListener("change", saveAppearanceSettings);
+
+resetColorsBtn.addEventListener("click", () => {
+  chrome.storage.sync.set(defaultAppearance, () => {
+    for (const key in colorInputs) {
+      colorInputs[key].value = defaultColors[key];
+    }
+    boldSidebarCheckbox.checked = defaultAppearance.boldSidebarTimestamp;
+    boldChatCheckbox.checked = defaultAppearance.boldChatTimestamp;
+    updateAppearancePreview();
+    showStatus(appearanceStatusEl);
+  });
+});
+
 // Reset to defaults
 resetBtn.addEventListener("click", () => {
   chrome.storage.sync.set(defaultSettings, () => {
@@ -366,11 +492,16 @@ function setStarStateAppearance(label, stateClass) {
 function refreshStarUi() {
   const starCard = starToggleBtn.closest(".star-card");
   if (!currentChatId) {
+    // The chip is the single message in this state — no separate status
+    // line, which would just repeat it.
     setStarStateAppearance(
-      t("starUnsupportedPage") || "Open a specific ChatGPT conversation first",
+      currentChatIsDraft
+        ? t("starChatCreating") ||
+            "This chat is still being created — try again in a moment"
+        : t("starStateUnavailable") || "Open a chat to bookmark it",
       "is-disabled",
     );
-    starToggleLabelEl.textContent = t("starButtonStar") || "Star this chat";
+    starToggleLabelEl.textContent = t("starButtonStar") || "Bookmark this chat";
     starToggleBtn.disabled = true;
     starChatTitleEl.textContent =
       currentChatTitle ||
@@ -383,13 +514,13 @@ function refreshStarUi() {
 
   const isStarred = starredIds.has(currentChatId);
   const stateValue = isStarred
-    ? t("starStateStarred") || "Starred"
-    : t("starStateNotStarred") || "Not starred";
+    ? t("starStateStarred") || "Bookmarked"
+    : t("starStateNotStarred") || "Not bookmarked";
   setStarStateAppearance(stateValue, isStarred ? "is-starred" : "is-idle");
   starToggleLabelEl.textContent =
     isStarred
-      ? t("starButtonUnstar") || "Unstar this chat"
-      : t("starButtonStar") || "Star this chat";
+      ? t("starButtonUnstar") || "Remove bookmark"
+      : t("starButtonStar") || "Bookmark this chat";
   starToggleBtn.disabled = false;
   starChatTitleEl.textContent =
     currentChatTitle || t("starUntitledConversation") || "Untitled conversation";
@@ -401,10 +532,7 @@ function loadCurrentChatContext() {
     if (!activeTab?.id) {
       currentChatId = null;
       currentChatTitle = "";
-      showStarStatus(
-        t("starUnsupportedPage") || "Open a specific ChatGPT conversation first",
-        "error",
-      );
+      currentChatIsDraft = false;
       refreshStarUi();
       return;
     }
@@ -418,6 +546,12 @@ function loadCurrentChatContext() {
 
         let ref;
         if (chrome.runtime.lastError) {
+          // On a ChatGPT tab this means the content script isn't answering —
+          // typically an orphaned script from before the extension was
+          // updated/reloaded, so storage changes no longer reach the page.
+          if (isChatGptUrl(activeTab.url)) {
+            pageReloadHintEl.hidden = false;
+          }
           ref = fallbackRef;
           currentChatTitle = fallbackTitle;
         } else {
@@ -438,20 +572,10 @@ function loadCurrentChatContext() {
         }
         currentChatId = ref?.id || null;
         currentChatKind = ref?.kind || "chat";
+        currentChatIsDraft = isDraft;
 
-        if (!currentChatId) {
-          showStarStatus(
-            isDraft
-              ? t("starChatCreating") ||
-                  "This chat is still being created — try again in a moment"
-              : t("starUnsupportedPage") ||
-                  "Open a specific ChatGPT conversation first",
-            "error",
-          );
-        } else {
-          starStatusEl.textContent = "";
-          starStatusEl.className = "star-status";
-        }
+        starStatusEl.textContent = "";
+        starStatusEl.className = "star-status";
 
         refreshStarUi();
       },
@@ -464,6 +588,16 @@ starToggleBtn.addEventListener("click", () => {
 
   const key = BOOKMARK_KEY_PREFIX + currentChatId;
   const isCurrentlyStarred = starredIds.has(currentChatId);
+
+  if (!isCurrentlyStarred && starredIds.size >= BOOKMARK_LIMIT) {
+    showStarStatus(
+      t("bmBookmarkLimitReached", [String(BOOKMARK_LIMIT)]) ||
+        `Bookmark limit reached (${BOOKMARK_LIMIT}). Remove some bookmarks to add more.`,
+      "error",
+    );
+    return;
+  }
+
   starToggleBtn.disabled = true;
 
   const handleResult = () => {
@@ -471,7 +605,7 @@ starToggleBtn.addEventListener("click", () => {
       starToggleBtn.disabled = false;
       showStarStatus(
         chrome.runtime.lastError.message ||
-          (t("starSaveFailed") || "Could not update starred chats"),
+          (t("starSaveFailed") || "Could not update bookmarks"),
         "error",
       );
       return;
@@ -485,8 +619,8 @@ starToggleBtn.addEventListener("click", () => {
     refreshStarUi();
     showStarStatus(
       isCurrentlyStarred
-        ? t("starRemovedSuccess") || "Chat removed from starred"
-        : t("starAddedSuccess") || "Chat added to starred",
+        ? t("starRemovedSuccess") || "Removed from bookmarks"
+        : t("starAddedSuccess") || "Added to bookmarks",
       "success",
     );
   };
@@ -595,6 +729,11 @@ const bmListOverflowWrap = document.getElementById("bmListOverflowWrap");
 const bmListOverflowBtn = document.getElementById("bmListOverflowBtn");
 const bmListOverflowMenu = document.getElementById("bmListOverflowMenu");
 const bmNewFolderBtn = document.getElementById("bmNewFolderBtn");
+const bmSearchInput = document.getElementById("bmSearchInput");
+const bmFoldersSectionHeader = document.getElementById(
+  "bmFoldersSectionHeader",
+);
+const bmUsageEl = document.getElementById("bmUsage");
 const bmDetailTitle = document.getElementById("bmDetailTitle");
 const bmDetailMeta = document.getElementById("bmDetailMeta");
 const bmDetailFolder = document.getElementById("bmDetailFolder");
@@ -609,6 +748,10 @@ const bmScreens = document.querySelectorAll("[data-bm-screen]");
 
 const VIRTUAL_ALL = "__all__";
 const VIRTUAL_UNCAT = "__uncategorized__";
+// Kept safely under chrome.storage.sync quotas: bookmarks are one item each
+// (512-item / 100KB caps), while ALL folders share a single 8KB item.
+const BOOKMARK_LIMIT = 250;
+const FOLDER_LIMIT = 30;
 const NOTE_MAX = 500;
 const FOLDER_NAME_MAX = 60;
 const NOTE_DEBOUNCE_MS = 800;
@@ -617,12 +760,12 @@ const FOLDER_ID_PREFIX = "fld_";
 
 const ICON_CHEVRON_RIGHT = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.22 11.78a.75.75 0 0 1 0-1.06L7.94 8 5.22 5.28a.75.75 0 1 1 1.06-1.06l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0Z"/></svg>`;
 const ICON_FOLDER = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4a1.5 1.5 0 0 1 1.5-1.5h2.69a1.5 1.5 0 0 1 1.06.44l.97.97h4.28A1.5 1.5 0 0 1 14 5.41v6.09A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V4Z"/></svg>`;
-const ICON_STAR_OUTLINE = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"/></svg>`;
 const ICON_NOTE = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.75A1.75 1.75 0 0 1 4.75 1h6.5A1.75 1.75 0 0 1 13 2.75v10.5A1.75 1.75 0 0 1 11.25 15h-6.5A1.75 1.75 0 0 1 3 13.25V2.75ZM5 5a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5Zm0 2.5a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5Zm0 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1H5Z"/></svg>`;
 const ICON_STACK = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.75A.75.75 0 0 1 2.75 4h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 3.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8Zm.75 2.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>`;
 const ICON_CHECK = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7 7a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06L6.25 10.69l6.47-6.47a.75.75 0 0 1 1.06 0Z"/></svg>`;
 const ICON_X = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg>`;
 const ICON_EXTERNAL = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.25 2.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 1 0 1.06 1.06L12 5.06v1.69a.75.75 0 0 0 1.5 0V3.25a.75.75 0 0 0-.75-.75H9.25ZM3.25 4A1.25 1.25 0 0 0 2 5.25v7.5A1.25 1.25 0 0 0 3.25 14h7.5A1.25 1.25 0 0 0 12 12.75V9.5a.75.75 0 0 0-1.5 0v3h-7v-7h3a.75.75 0 0 0 0-1.5h-3.25Z"/></svg>`;
+const ICON_TRASH = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5h-.36l-.6 8.62a1.75 1.75 0 0 1-1.744 1.63H5.454a1.75 1.75 0 0 1-1.745-1.63l-.6-8.62h-.36a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.613 4.5l.592 8.516a.25.25 0 0 0 .25.234h5.09a.25.25 0 0 0 .249-.234l.592-8.516H4.613ZM9.5 3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25V3h3Z"/></svg>`;
 
 let bmFolders = {};
 let bmBookmarks = {};
@@ -847,7 +990,96 @@ function renderBookmarkScreen() {
   else if (bmState.screen === "detail") renderBookmarkDetailScreen();
 }
 
+function updateBmUsage() {
+  const bmCount = Object.keys(bmBookmarks).length;
+  const fldCount = Object.keys(bmFolders).length;
+  bmUsageEl.textContent =
+    t("bmUsageTemplate", [
+      String(bmCount),
+      String(BOOKMARK_LIMIT),
+      String(fldCount),
+      String(FOLDER_LIMIT),
+    ]) ||
+    `${bmCount} / ${BOOKMARK_LIMIT} bookmarks · ${fldCount} / ${FOLDER_LIMIT} folders`;
+  const isFull = bmCount >= BOOKMARK_LIMIT || fldCount >= FOLDER_LIMIT;
+  const isWarn =
+    !isFull &&
+    (bmCount >= BOOKMARK_LIMIT * 0.9 || fldCount >= FOLDER_LIMIT * 0.9);
+  bmUsageEl.classList.toggle("is-full", isFull);
+  bmUsageEl.classList.toggle("is-warn", isWarn);
+}
+
+// Transient amber notice in the inline area (e.g. limit reached).
+function showInlineLimitNotice(message) {
+  clearInlineArea();
+  const host = getCurrentInlineArea();
+  if (!host) return;
+  const wrap = document.createElement("div");
+  wrap.className = "bm-delete-confirm";
+  wrap.textContent = message;
+  host.appendChild(wrap);
+  setTimeout(() => {
+    if (wrap.parentNode) wrap.remove();
+  }, 3000);
+}
+
+function folderLimitReached() {
+  return Object.keys(bmFolders).length >= FOLDER_LIMIT;
+}
+
+function notifyFolderLimit() {
+  showInlineLimitNotice(
+    t("bmFolderLimitReached", [String(FOLDER_LIMIT)]) ||
+      `Folder limit reached (${FOLDER_LIMIT}). Delete a folder to create a new one.`,
+  );
+}
+
+function renderBookmarkSearchResults(query) {
+  bmFoldersSectionHeader.style.display = "none";
+  const matches = Object.values(bmBookmarks)
+    .filter(
+      (b) =>
+        (b.titleSnapshot || "").toLowerCase().includes(query) ||
+        (b.note || "").toLowerCase().includes(query),
+    )
+    .sort((a, b) => (b.starredAt || "").localeCompare(a.starredAt || ""));
+
+  bmFolderListBody.innerHTML = "";
+  const countEl = document.createElement("div");
+  countEl.className = "bm-search-count";
+  countEl.textContent =
+    t("bmSearchResultsTemplate", [String(matches.length)]) ||
+    `Results (${matches.length})`;
+  bmFolderListBody.appendChild(countEl);
+
+  if (matches.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "bm-empty";
+    empty.innerHTML = `
+      <div class="bm-empty-hint">${escapeHtml(
+        t("bmSearchNoResults") || "No bookmarks match your search.",
+      )}</div>
+    `;
+    bmFolderListBody.appendChild(empty);
+    return;
+  }
+
+  matches.forEach((bm) => bmFolderListBody.appendChild(makeBookmarkRow(bm)));
+}
+
 function renderFolderListScreen() {
+  updateBmUsage();
+  // Search across every bookmark (title + note); active query replaces the
+  // folder list with matching rows.
+  const hasAnyBookmarks = Object.keys(bmBookmarks).length > 0;
+  const query = bmSearchInput.value.trim().toLowerCase();
+  bmSearchInput.style.display = hasAnyBookmarks || query ? "" : "none";
+  if (query) {
+    renderBookmarkSearchResults(query);
+    return;
+  }
+  bmFoldersSectionHeader.style.display = "";
+
   const rows = [];
   const allCount = countBookmarksInFolder(VIRTUAL_ALL);
   const uncatCount = countBookmarksInFolder(VIRTUAL_UNCAT);
@@ -873,7 +1105,7 @@ function renderFolderListScreen() {
     empty.className = "bm-empty";
     empty.innerHTML = `
       <div class="bm-empty-title">${escapeHtml(t("bmEmptyStateTitle") || "No bookmarks yet")}</div>
-      <div class="bm-empty-hint">${escapeHtml(t("bmEmptyStateHint") || "Star a chat to get started.")}</div>
+      <div class="bm-empty-hint">${escapeHtml(t("bmEmptyStateHint") || "Bookmark a chat to get started.")}</div>
     `;
     bmFolderListBody.appendChild(empty);
   }
@@ -942,7 +1174,7 @@ function renderBookmarkListScreen() {
   if (items.length > 0) {
     bmUnstarAllBtn.textContent =
       t("bmUnstarAllButtonTemplate", [String(items.length)]) ||
-      `Unstar all (${items.length})`;
+      `Remove all (${items.length})`;
     bmListFooter.hidden = false;
   } else {
     bmListFooter.hidden = true;
@@ -964,7 +1196,7 @@ function renderBookmarkListScreen() {
     const hint = fid
       ? t("bmFolderEmptyHint") ||
         "Move a bookmark here from its detail view."
-      : t("bmEmptyStateHint") || "Star a chat to get started.";
+      : t("bmEmptyStateHint") || "Bookmark a chat to get started.";
     empty.innerHTML = `
       <div class="bm-empty-title">${escapeHtml(title)}</div>
       <div class="bm-empty-hint">${escapeHtml(hint)}</div>
@@ -978,31 +1210,102 @@ function renderBookmarkListScreen() {
   }
 }
 
+function quickRemoveBookmark(id) {
+  chrome.storage.sync.remove(BOOKMARK_KEY_PREFIX + id, () => {
+    if (handleStorageError()) return;
+    delete bmBookmarks[id];
+    starredIds.delete(id);
+    refreshStarUi();
+    renderBookmarkScreen();
+  });
+}
+
+// Inline confirmation above the list, same pattern as folder delete and
+// "Remove all" — states which bookmark is about to be removed.
+function showBookmarkDeleteConfirm(bm) {
+  clearInlineArea();
+  const host = getCurrentInlineArea();
+  if (!host) return;
+  const title =
+    bm.titleSnapshot || t("starUntitledConversation") || "Untitled conversation";
+  const wrap = document.createElement("div");
+  wrap.className = "bm-delete-confirm";
+  const question =
+    t("bmRowDeleteConfirmTemplate", [title]) ||
+    `Remove '${title}' from bookmarks?`;
+  wrap.innerHTML = `
+    <div>${escapeHtml(question)}</div>
+    <div class="bm-delete-confirm-actions">
+      <button type="button" class="bm-btn-sm" data-bm-confirm="cancel" data-i18n="bmFolderCancelButton">Cancel</button>
+      <button type="button" class="bm-btn-sm is-danger" data-bm-confirm="remove" data-i18n="bmDetailUnstarButton">Remove bookmark</button>
+    </div>
+  `;
+  wrap.querySelectorAll("[data-i18n]").forEach((el) => {
+    const msg = t(el.getAttribute("data-i18n"));
+    if (msg) el.textContent = msg;
+  });
+  host.appendChild(wrap);
+  wrap
+    .querySelector('[data-bm-confirm="cancel"]')
+    .addEventListener("click", clearInlineArea);
+  wrap.querySelector('[data-bm-confirm="remove"]').addEventListener(
+    "click",
+    () => {
+      clearInlineArea();
+      quickRemoveBookmark(bm.id);
+    },
+  );
+}
+
+// The row hosts its own delete button, so it can't be a <button> itself
+// (nested buttons are invalid) — it's a div with button semantics instead.
 function makeBookmarkRow(bm) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bm-row is-bookmark";
+  const row = document.createElement("div");
+  row.className = "bm-row is-bookmark";
+  row.tabIndex = 0;
+  row.setAttribute("role", "button");
   const title = bm.titleSnapshot || t("starUntitledConversation") || "Untitled conversation";
   const formatted = formatStarredAt(bm.starredAt);
   const hasNote = bm.note && bm.note.trim().length > 0;
-  btn.innerHTML = `
-    <span class="bm-row-icon">${ICON_STAR_OUTLINE}</span>
+  const removeLabel = t("bmDetailUnstarButton") || "Remove bookmark";
+  row.innerHTML = `
     <span class="bm-row-body">
       <span class="bm-row-title">${escapeHtml(title)}</span>
       <span class="bm-row-sub">${escapeHtml(formatted)}</span>
     </span>
     <span class="bm-row-suffix">
       ${hasNote ? ICON_NOTE : ""}
+      <button
+        type="button"
+        class="bm-row-delete"
+        aria-label="${escapeHtml(removeLabel)}"
+        title="${escapeHtml(removeLabel)}"
+      >${ICON_TRASH}</button>
       ${ICON_CHEVRON_RIGHT}
     </span>
   `;
-  btn.addEventListener("click", () => {
+
+  const openDetail = () => {
     navTo("detail", {
       bookmarkId: bm.id,
       returnFolderId: bmState.folderId,
     });
+  };
+  row.addEventListener("click", openDetail);
+  row.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetail();
+    }
   });
-  return btn;
+
+  const delBtn = row.querySelector(".bm-row-delete");
+  delBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showBookmarkDeleteConfirm(bm);
+  });
+
+  return row;
 }
 
 function formatStarredAt(iso) {
@@ -1027,7 +1330,7 @@ function renderBookmarkDetailScreen() {
     bm.titleSnapshot || t("starUntitledConversation") || "Untitled conversation";
   const formatted = formatStarredAt(bm.starredAt);
   bmDetailMeta.textContent =
-    t("bmDetailStarredOnTemplate", [formatted]) || `Starred on ${formatted}`;
+    t("bmDetailStarredOnTemplate", [formatted]) || `Bookmarked on ${formatted}`;
 
   populateFolderDropdown(bm.folderId);
   bmDetailNote.value = bm.note || "";
@@ -1126,6 +1429,10 @@ function showInlineFolderInput({
 }
 
 function createFolder(name, parentId) {
+  if (folderLimitReached()) {
+    notifyFolderLimit();
+    return;
+  }
   const trimmed = name.trim().slice(0, FOLDER_NAME_MAX);
   if (!trimmed) return;
   const id = genFolderId();
@@ -1215,7 +1522,7 @@ function showUnstarAllConfirm(folderId) {
   wrap.className = "bm-delete-confirm";
   const question =
     t("bmUnstarAllConfirmTemplate", [String(items.length)]) ||
-    `Unstar all ${items.length} bookmarks? This cannot be undone.`;
+    `Remove all ${items.length} bookmarks? This cannot be undone.`;
   wrap.innerHTML = `
     <div>${escapeHtml(question)}</div>
     <div class="bm-delete-confirm-actions">
@@ -1398,7 +1705,7 @@ function resetUnstarConfirm() {
     bmUnstarConfirmTimer = null;
   }
   bmUnstarBtn.classList.remove("is-confirming");
-  bmUnstarBtn.textContent = t("bmDetailUnstarButton") || "Unstar";
+  bmUnstarBtn.textContent = t("bmDetailUnstarButton") || "Remove bookmark";
 }
 
 function handleUnstarClick() {
@@ -1406,7 +1713,7 @@ function handleUnstarClick() {
     bmUnstarConfirmActive = true;
     bmUnstarBtn.classList.add("is-confirming");
     bmUnstarBtn.textContent =
-      t("bmDetailUnstarConfirm") || "Tap again to unstar";
+      t("bmDetailUnstarConfirm") || "Tap again to remove";
     bmUnstarConfirmTimer = setTimeout(
       resetUnstarConfirm,
       UNSTAR_CONFIRM_MS,
@@ -1441,7 +1748,22 @@ function closeOverflowMenu() {
 }
 
 // Wire up static event listeners
+bmSearchInput.addEventListener("input", () => {
+  if (bmState.screen === "folders") renderFolderListScreen();
+});
+bmSearchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && bmSearchInput.value) {
+    e.preventDefault();
+    bmSearchInput.value = "";
+    renderFolderListScreen();
+  }
+});
+
 bmNewFolderBtn.addEventListener("click", () => {
+  if (folderLimitReached()) {
+    notifyFolderLimit();
+    return;
+  }
   showInlineFolderInput({
     placeholderKey: "bmNewFolderPlaceholder",
     onCommit: (name) => createFolder(name, null),
@@ -1484,6 +1806,10 @@ bmListOverflowMenu.addEventListener("click", (e) => {
       onCommit: (name) => renameFolder(fid, name),
     });
   } else if (action === "new-subfolder") {
+    if (folderLimitReached()) {
+      notifyFolderLimit();
+      return;
+    }
     showInlineFolderInput({
       placeholderKey: "bmNewFolderPlaceholder",
       onCommit: (name) => createFolder(name, fid),

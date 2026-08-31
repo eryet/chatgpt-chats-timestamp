@@ -8,6 +8,14 @@ const defaultSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
+  colorSidebarPrimaryLight: "#4b5563",
+  colorSidebarPrimaryDark: "#e3e3e3",
+  colorSidebarSecondaryLight: "#15803d",
+  colorSidebarSecondaryDark: "#81c995",
+  colorChatLight: "#4b5563",
+  colorChatDark: "#afafaf",
+  boldSidebarTimestamp: false,
+  boldChatTimestamp: true,
   bookmarkSchemaVersion: 2,
 };
 

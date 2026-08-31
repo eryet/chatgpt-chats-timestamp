@@ -20,6 +20,45 @@
   "tabSettings": {
     "message": "設定"
   },
+  "tabAppearance": {
+    "message": "外觀"
+  },
+  "labelSidebarTimestampColor": {
+    "message": "側邊欄時間戳"
+  },
+  "labelSidebarHoverColor": {
+    "message": "側邊欄懸停時間戳"
+  },
+  "labelChatTimestampColor": {
+    "message": "訊息時間戳"
+  },
+  "colorLightLabel": {
+    "message": "淺色"
+  },
+  "colorDarkLabel": {
+    "message": "深色"
+  },
+  "labelBoldSidebarTimestamp": {
+    "message": "側邊欄時間戳粗體"
+  },
+  "labelBoldChatTimestamp": {
+    "message": "訊息時間戳粗體"
+  },
+  "resetAppearanceButton": {
+    "message": "還原預設外觀"
+  },
+  "previewSidebarLabel": {
+    "message": "側邊欄"
+  },
+  "previewChatLabel": {
+    "message": "對話訊息"
+  },
+  "previewSampleChatTitle": {
+    "message": "聊天標題"
+  },
+  "pageReloadHint": {
+    "message": "請重新整理已開啟的 ChatGPT 分頁——該分頁仍在執行舊版擴充功能，設定變更要重新整理後才會生效。"
+  },
   "labelDateFormat": {
     "message": "日期與時間格式"
   },
@@ -93,7 +132,7 @@
     "message": "預覽"
   },
   "starCurrentChatLabel": {
-    "message": "標記目前聊天"
+    "message": "將目前聊天加入書籤"
   },
   "starStateLoading": {
     "message": "正在檢查目前聊天..."
@@ -102,19 +141,19 @@
     "message": "目前聊天："
   },
   "starStateStarred": {
-    "message": "已加星"
+    "message": "已加入書籤"
   },
   "starStateNotStarred": {
-    "message": "未加星"
+    "message": "未加入書籤"
   },
   "starStateUnavailable": {
-    "message": "請先開啟特定聊天才能加星"
+    "message": "開啟聊天後即可加入書籤"
   },
   "starButtonStar": {
-    "message": "加入星號"
+    "message": "加入書籤"
   },
   "starButtonUnstar": {
-    "message": "移除星號"
+    "message": "移除書籤"
   },
   "starFilterLabel": {
     "message": "側邊欄篩選"
@@ -123,22 +162,22 @@
     "message": "所有聊天"
   },
   "starFilterStarred": {
-    "message": "僅顯示加星"
+    "message": "僅顯示書籤"
   },
-  "starUnsupportedPage": {
-    "message": "請先開啟特定的 ChatGPT 對話"
+  "starFilterHint": {
+    "message": "決定 ChatGPT 側邊欄要顯示哪些聊天。"
   },
   "starChatCreating": {
     "message": "這個對話仍在建立中，請稍後再試"
   },
   "starAddedSuccess": {
-    "message": "已加入星號"
+    "message": "已加入書籤"
   },
   "starRemovedSuccess": {
-    "message": "已移除星號"
+    "message": "已從書籤移除"
   },
   "starSaveFailed": {
-    "message": "無法更新加星聊天"
+    "message": "無法更新書籤"
   },
   "starNoConversationSelected": {
     "message": "尚未選取對話"
@@ -147,7 +186,10 @@
     "message": "未命名對話"
   },
   "exportChatLabel": {
-    "message": "匯出聊天（不支援圖片與檔案）"
+    "message": "匯出聊天"
+  },
+  "exportChatHint": {
+    "message": "以文字複製整段對話——不包含圖片與檔案。"
   },
   "exportFormatMarkdown": {
     "message": "Markdown"
@@ -237,6 +279,24 @@
   "bmScreenFoldersTitle": {
     "message": "書籤"
   },
+  "bmSearchPlaceholder": {
+    "message": "搜尋書籤…"
+  },
+  "bmSearchResultsTemplate": {
+    "message": "搜尋結果（$1）"
+  },
+  "bmSearchNoResults": {
+    "message": "沒有符合搜尋的書籤。"
+  },
+  "bmUsageTemplate": {
+    "message": "書籤 $1 / $2 · 資料夾 $3 / $4"
+  },
+  "bmBookmarkLimitReached": {
+    "message": "已達書籤上限（$1），請先移除部分書籤。"
+  },
+  "bmFolderLimitReached": {
+    "message": "已達資料夾上限（$1），請先刪除資料夾再新增。"
+  },
   "bmFoldersSectionLabel": {
     "message": "資料夾"
   },
@@ -282,13 +342,13 @@
     "message": "尚無書籤"
   },
   "bmEmptyStateHint": {
-    "message": "請先加星標聊天以開始使用。"
+    "message": "請先將聊天加入書籤以開始使用。"
   },
   "bmDetailOpenChat": {
     "message": "開啟聊天"
   },
   "bmDetailStarredOnTemplate": {
-    "message": "於 $1 加入星號",
+    "message": "於 $1 加入書籤",
     "placeholders": {
       "date": {
         "content": "$1"
@@ -322,7 +382,10 @@
     "message": "無法儲存備註"
   },
   "bmDetailUnstarButton": {
-    "message": "移除星號"
+    "message": "移除書籤"
+  },
+  "bmRowDeleteConfirmTemplate": {
+    "message": "要將「$1」從書籤移除嗎？"
   },
   "bmDetailUnstarConfirm": {
     "message": "再點一次以確認移除"
@@ -342,10 +405,10 @@
     "message": "無法儲存變更"
   },
   "bmUnstarAll": {
-    "message": "全部移除星號"
+    "message": "全部移除"
   },
   "bmUnstarAllButtonTemplate": {
-    "message": "全部移除星號（$1）",
+    "message": "全部移除（$1）",
     "placeholders": {
       "count": {
         "content": "$1"

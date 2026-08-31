@@ -20,6 +20,45 @@
   "tabSettings": {
     "message": "Settings"
   },
+  "tabAppearance": {
+    "message": "Appearance"
+  },
+  "labelSidebarTimestampColor": {
+    "message": "Sidebar timestamp"
+  },
+  "labelSidebarHoverColor": {
+    "message": "Sidebar hover timestamp"
+  },
+  "labelChatTimestampColor": {
+    "message": "Chat timestamp"
+  },
+  "colorLightLabel": {
+    "message": "Light"
+  },
+  "colorDarkLabel": {
+    "message": "Dark"
+  },
+  "labelBoldSidebarTimestamp": {
+    "message": "Bold sidebar timestamp"
+  },
+  "labelBoldChatTimestamp": {
+    "message": "Bold chat timestamp"
+  },
+  "resetAppearanceButton": {
+    "message": "Restore default appearance"
+  },
+  "previewSidebarLabel": {
+    "message": "Sidebar"
+  },
+  "previewChatLabel": {
+    "message": "Chat"
+  },
+  "previewSampleChatTitle": {
+    "message": "Chat title"
+  },
+  "pageReloadHint": {
+    "message": "Refresh the open ChatGPT tab — it's running an older version of this extension, so settings changes won't apply there until you do."
+  },
   "labelDateFormat": {
     "message": "Date & Time Format"
   },
@@ -93,7 +132,7 @@
     "message": "Preview"
   },
   "starCurrentChatLabel": {
-    "message": "Star Current Chat"
+    "message": "Bookmark Current Chat"
   },
   "starStateLoading": {
     "message": "Checking current chat..."
@@ -102,19 +141,19 @@
     "message": "Current chat:"
   },
   "starStateStarred": {
-    "message": "Starred"
+    "message": "Bookmarked"
   },
   "starStateNotStarred": {
-    "message": "Not starred"
+    "message": "Not bookmarked"
   },
   "starStateUnavailable": {
-    "message": "Open a specific chat to use starring"
+    "message": "Open a chat to bookmark it"
   },
   "starButtonStar": {
-    "message": "Star this chat"
+    "message": "Bookmark this chat"
   },
   "starButtonUnstar": {
-    "message": "Unstar this chat"
+    "message": "Remove bookmark"
   },
   "starFilterLabel": {
     "message": "Sidebar Filter"
@@ -123,22 +162,22 @@
     "message": "All chats"
   },
   "starFilterStarred": {
-    "message": "Starred only"
+    "message": "Bookmarked only"
   },
-  "starUnsupportedPage": {
-    "message": "Open a specific ChatGPT conversation first"
+  "starFilterHint": {
+    "message": "Controls which chats stay visible in the ChatGPT sidebar."
   },
   "starChatCreating": {
     "message": "This chat is still being created — try again in a moment"
   },
   "starAddedSuccess": {
-    "message": "Chat added to starred"
+    "message": "Added to bookmarks"
   },
   "starRemovedSuccess": {
-    "message": "Chat removed from starred"
+    "message": "Removed from bookmarks"
   },
   "starSaveFailed": {
-    "message": "Could not update starred chats"
+    "message": "Could not update bookmarks"
   },
   "starNoConversationSelected": {
     "message": "No conversation selected"
@@ -147,7 +186,10 @@
     "message": "Untitled conversation"
   },
   "exportChatLabel": {
-    "message": "Export Chat (Images & files not supported)"
+    "message": "Export Chat"
+  },
+  "exportChatHint": {
+    "message": "Copies the conversation as text — images and files aren't included."
   },
   "exportFormatMarkdown": {
     "message": "Markdown"
@@ -237,6 +279,24 @@
   "bmScreenFoldersTitle": {
     "message": "Bookmarks"
   },
+  "bmSearchPlaceholder": {
+    "message": "Search bookmarks…"
+  },
+  "bmSearchResultsTemplate": {
+    "message": "Results ($1)"
+  },
+  "bmSearchNoResults": {
+    "message": "No bookmarks match your search."
+  },
+  "bmUsageTemplate": {
+    "message": "$1 / $2 bookmarks · $3 / $4 folders"
+  },
+  "bmBookmarkLimitReached": {
+    "message": "Bookmark limit reached ($1). Remove some bookmarks to add more."
+  },
+  "bmFolderLimitReached": {
+    "message": "Folder limit reached ($1). Delete a folder to create a new one."
+  },
   "bmFoldersSectionLabel": {
     "message": "Folders"
   },
@@ -282,13 +342,13 @@
     "message": "No bookmarks yet"
   },
   "bmEmptyStateHint": {
-    "message": "Star a chat to get started."
+    "message": "Bookmark a chat to get started."
   },
   "bmDetailOpenChat": {
     "message": "Open chat"
   },
   "bmDetailStarredOnTemplate": {
-    "message": "Starred on $1",
+    "message": "Bookmarked on $1",
     "placeholders": {
       "date": {
         "content": "$1"
@@ -322,10 +382,13 @@
     "message": "Could not save note"
   },
   "bmDetailUnstarButton": {
-    "message": "Unstar"
+    "message": "Remove bookmark"
+  },
+  "bmRowDeleteConfirmTemplate": {
+    "message": "Remove '$1' from bookmarks?"
   },
   "bmDetailUnstarConfirm": {
-    "message": "Tap again to unstar"
+    "message": "Tap again to remove"
   },
   "bmDetailMovedTemplate": {
     "message": "Moved to $1",
@@ -342,10 +405,10 @@
     "message": "Could not save changes"
   },
   "bmUnstarAll": {
-    "message": "Unstar all"
+    "message": "Remove all"
   },
   "bmUnstarAllButtonTemplate": {
-    "message": "Unstar all ($1)",
+    "message": "Remove all ($1)",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -353,7 +416,7 @@
     }
   },
   "bmUnstarAllConfirmTemplate": {
-    "message": "Unstar all $1 bookmarks? This cannot be undone.",
+    "message": "Remove all $1 bookmarks? This cannot be undone.",
     "placeholders": {
       "count": {
         "content": "$1"

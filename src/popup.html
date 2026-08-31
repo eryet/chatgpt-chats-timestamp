@@ -38,7 +38,7 @@
       }
       .tab-list {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 6px;
         margin-bottom: 14px;
       }
@@ -77,6 +77,12 @@
         font-weight: 500;
         margin-bottom: 6px;
         color: #6b7280;
+      }
+      .setting-hint {
+        font-size: 11px;
+        line-height: 1.4;
+        color: #9ca3af;
+        margin-top: 4px;
       }
       select {
         width: 100%;
@@ -149,6 +155,105 @@
         border-radius: 6px;
         border: 1px solid #e5e7eb;
       }
+      .color-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 0;
+      }
+      .color-row-label {
+        font-size: 13px;
+        color: #374151;
+        min-width: 0;
+      }
+      .color-inputs {
+        display: flex;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .color-field {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        cursor: pointer;
+      }
+      .color-field span {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #9ca3af;
+      }
+      .color-field input[type="color"] {
+        width: 36px;
+        height: 24px;
+        padding: 1px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+      }
+      .color-field input[type="color"]:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .appearance-section-label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9ca3af;
+        margin: 10px 0 4px;
+      }
+      .appearance-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .appearance-title {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 12px;
+        line-height: 16px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .appearance-card.is-light .appearance-title {
+        color: #0d0d0d;
+      }
+      .appearance-card.is-dark .appearance-title {
+        color: #ececec;
+      }
+      .appearance-card {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        font-family: ui-monospace, "SF Mono", Monaco, monospace;
+      }
+      /* Match ChatGPT's real surfaces: light uses gray-25 (#fcfcfc), dark is
+         pure black for both the sidebar and the main chat area. */
+      .appearance-card.is-light {
+        background: #fcfcfc;
+      }
+      .appearance-card.is-dark {
+        background: #000000;
+        border-color: #2f2f2f;
+      }
+      .appearance-sample {
+        font-size: 10px;
+        line-height: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .appearance-sample.is-chat {
+        font-size: 11px;
+        margin-top: 6px;
+      }
       .preview-label {
         font-size: 10px;
         text-transform: uppercase;
@@ -181,20 +286,16 @@
       }
       .star-card-top {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 10px;
-      }
-      .star-meta {
-        min-width: 0;
-        flex: 1;
+        margin-bottom: 6px;
       }
       .star-kicker {
         font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: #9a6b16;
-        margin-bottom: 6px;
       }
       .star-state {
         flex-shrink: 0;
@@ -227,7 +328,7 @@
         line-height: 1.35;
         font-weight: 600;
         color: #1f2937;
-        min-height: 35px;
+        min-height: 18px;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -390,6 +491,19 @@
         margin-top: 4px;
         display: none;
       }
+      .page-reload-hint {
+        padding: 8px 10px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        color: #9a3412;
+        font-size: 11px;
+        line-height: 1.4;
+        margin-bottom: 10px;
+      }
+      .page-reload-hint[hidden] {
+        display: none;
+      }
 
       /* Bookmark manager */
       .bm-manage-shortcut {
@@ -462,6 +576,43 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .bm-search-input {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #1f2937;
+        background: white;
+        margin-bottom: 8px;
+      }
+      .bm-search-input:focus {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .bm-search-count {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6b7280;
+        margin: 2px 0 6px;
+      }
+      .bm-usage {
+        font-size: 10px;
+        color: #9ca3af;
+        text-align: center;
+        margin-top: 10px;
+        font-variant-numeric: tabular-nums;
+      }
+      .bm-usage.is-warn {
+        color: #d97706;
+      }
+      .bm-usage.is-full {
+        color: #dc2626;
+        font-weight: 600;
+      }
       .bm-section-header {
         display: flex;
         align-items: center;
@@ -496,6 +647,42 @@
       .bm-row:hover {
         background: #f9fafb;
         border-color: #e5e7eb;
+      }
+      .bm-row:focus-visible {
+        outline: none;
+        border-color: #10a37f;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.15);
+      }
+      .bm-row-delete {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        color: #9ca3af;
+        cursor: pointer;
+        opacity: 0;
+        transition:
+          opacity 0.15s,
+          background 0.15s,
+          color 0.15s;
+      }
+      .bm-row:hover .bm-row-delete,
+      .bm-row:focus-within .bm-row-delete {
+        opacity: 1;
+      }
+      .bm-row-delete:hover {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .bm-row-delete svg {
+        width: 13px;
+        height: 13px;
+        fill: currentColor;
       }
       .bm-row-icon {
         display: flex;
@@ -873,6 +1060,331 @@
       .bm-unstar-all-link:active {
         background: #fecaca;
       }
+
+      /* ---------- Dark mode (follows the browser/OS theme) ---------- */
+      :root {
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1f1f1f;
+          color: #e5e5e5;
+        }
+        .header {
+          border-bottom-color: #3a3a3a;
+        }
+        .header h1 {
+          color: #f0f0f0;
+        }
+        .tab-btn {
+          background: #2a2a2a;
+          border-color: #454545;
+          color: #d6d6d6;
+        }
+        .tab-btn:hover {
+          border-color: #6b6b6b;
+          color: #f0f0f0;
+        }
+        .tab-btn.active {
+          background: rgba(16, 163, 127, 0.16);
+          border-color: #10a37f;
+          color: #34d399;
+        }
+        .setting-label {
+          color: #bdbdbd;
+        }
+        .setting-hint,
+        .info-text {
+          color: #a8a8a8;
+        }
+        select,
+        .bm-search-input {
+          background: #2a2a2a;
+          border-color: #4a4a4a;
+          color: #e5e5e5;
+        }
+        .bm-search-count {
+          color: #a8a8a8;
+        }
+        .bm-usage {
+          color: #a8a8a8;
+        }
+        .bm-usage.is-warn {
+          color: #f0a24a;
+        }
+        .bm-usage.is-full {
+          color: #f87171;
+        }
+        .toggle-label,
+        .color-row-label {
+          color: #e0e0e0;
+        }
+        .toggle-slider {
+          background-color: #4a4a4a;
+        }
+        .preview {
+          background: #262626;
+          border-color: #3a3a3a;
+        }
+        .preview-label,
+        .appearance-section-label,
+        .color-field span {
+          color: #a8a8a8;
+        }
+        .preview-text {
+          color: #e0e0e0;
+        }
+        .preview-secondary {
+          color: #34d399;
+        }
+        .color-field input[type="color"] {
+          background: #2a2a2a;
+          border-color: #4a4a4a;
+        }
+        .appearance-card.is-light {
+          border-color: #3a3a3a;
+        }
+        .star-card {
+          background: #29241a;
+          border-color: #4a3d24;
+          box-shadow: none;
+        }
+        .star-kicker {
+          color: #d4a94e;
+        }
+        .star-chat-title {
+          color: #f0f0f0;
+        }
+        .star-state {
+          background: #332a14;
+          border-color: #5c4a20;
+          color: #e8c477;
+        }
+        .star-state.is-starred {
+          background: #3a2f14;
+          border-color: #6b5518;
+          color: #fbbf24;
+        }
+        .star-state.is-idle,
+        .star-state.is-disabled {
+          background: #2c2c2c;
+          border-color: #444444;
+          color: #bdbdbd;
+        }
+        .star-btn:disabled {
+          background: #3a3a3a;
+          color: #a8a8a8;
+        }
+        .star-status {
+          color: #bdbdbd;
+        }
+        .star-status.error {
+          color: #f87171;
+        }
+        .star-status.success {
+          color: #34d399;
+        }
+        .footer {
+          border-top-color: #3a3a3a;
+        }
+        .reset-btn {
+          color: #bdbdbd;
+        }
+        .reset-btn:hover {
+          color: #e5e5e5;
+        }
+        .export-section {
+          border-top-color: #3a3a3a;
+        }
+        .export-status {
+          color: #bdbdbd;
+        }
+        .export-status.error {
+          color: #f87171;
+        }
+        .export-status.success {
+          color: #34d399;
+        }
+        .refresh-hint {
+          color: #f0a24a;
+        }
+        .page-reload-hint,
+        .bm-delete-confirm {
+          background: #2e2416;
+          border-color: #5c4520;
+          color: #e8c477;
+        }
+        .bm-manage-shortcut {
+          color: #d4a94e;
+        }
+        .bm-manage-shortcut:hover {
+          color: #e8c477;
+        }
+        .bm-back-btn,
+        .bm-icon-btn {
+          color: #bdbdbd;
+        }
+        .bm-back-btn:hover,
+        .bm-icon-btn:hover {
+          background: #333333;
+          color: #f0f0f0;
+        }
+        .bm-screen-title {
+          color: #f0f0f0;
+        }
+        .bm-section-header {
+          color: #a8a8a8;
+        }
+        .bm-row {
+          background: transparent;
+          color: #e5e5e5;
+        }
+        .bm-row:hover {
+          background: #2c2c2c;
+          border-color: #3f3f3f;
+        }
+        .bm-row:focus-visible {
+          border-color: #10a37f;
+        }
+        .bm-row-icon {
+          color: #a8a8a8;
+        }
+        .bm-row.is-folder .bm-row-icon {
+          color: #d4a94e;
+        }
+        .bm-row-title {
+          color: #e5e5e5;
+        }
+        .bm-row-sub,
+        .bm-row-suffix,
+        .bm-row-delete {
+          color: #a8a8a8;
+        }
+        .bm-row-delete:hover {
+          background: #3a2222;
+          color: #f87171;
+        }
+        .bm-count {
+          background: #333333;
+          border-color: #454545;
+          color: #bdbdbd;
+        }
+        .bm-inline-row {
+          background: #262626;
+          border-color: #4a4a4a;
+        }
+        .bm-inline-input {
+          background: #2a2a2a;
+          border-color: #4a4a4a;
+          color: #e5e5e5;
+        }
+        .bm-inline-commit:disabled {
+          background: #3a3a3a;
+          color: #a8a8a8;
+        }
+        .bm-inline-cancel {
+          background: #2a2a2a;
+          border-color: #4a4a4a;
+          color: #bdbdbd;
+        }
+        .bm-inline-cancel:hover {
+          background: #333333;
+          color: #f0f0f0;
+        }
+        .bm-overflow-menu {
+          background: #2a2a2a;
+          border-color: #454545;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        .bm-menu-item {
+          color: #e5e5e5;
+        }
+        .bm-menu-item:hover {
+          background: #383838;
+        }
+        .bm-menu-item.is-danger {
+          color: #f87171;
+        }
+        .bm-menu-item.is-danger:hover {
+          background: #3a2222;
+        }
+        .bm-btn-sm {
+          background: #2a2a2a;
+          border-color: #4a4a4a;
+          color: #e0e0e0;
+        }
+        .bm-btn-sm:hover {
+          background: #333333;
+        }
+        .bm-btn-sm.is-danger {
+          background: #dc2626;
+          border-color: #dc2626;
+          color: #ffffff;
+        }
+        .bm-btn-sm.is-danger:hover {
+          background: #b91c1c;
+          border-color: #b91c1c;
+        }
+        .bm-empty {
+          background: #262626;
+          border-color: #3f3f3f;
+        }
+        .bm-empty-title {
+          color: #d6d6d6;
+        }
+        .bm-empty-hint {
+          color: #a8a8a8;
+        }
+        .bm-detail-card {
+          background: #2a2a2a;
+          border-color: #3f3f3f;
+        }
+        .bm-detail-title {
+          color: #f0f0f0;
+        }
+        .bm-detail-meta,
+        .bm-field-label {
+          color: #bdbdbd;
+        }
+        .bm-note {
+          background: #262626;
+          border-color: #4a4a4a;
+          color: #e5e5e5;
+        }
+        .bm-note-counter {
+          color: #a8a8a8;
+        }
+        .bm-note-counter.is-over {
+          color: #f87171;
+        }
+        .bm-status {
+          color: #bdbdbd;
+        }
+        .bm-status.error {
+          color: #f87171;
+        }
+        .bm-status.success {
+          color: #34d399;
+        }
+        .bm-banner {
+          background: #331b1b;
+          border-color: #5c2626;
+          color: #f87171;
+        }
+        .bm-list-footer {
+          border-top-color: #2f2f2f;
+        }
+        .bm-unstar-all-link {
+          color: #f87171;
+        }
+        .bm-unstar-all-link:hover {
+          background: #3a2222;
+          border-color: #5c2626;
+        }
+        .bm-unstar-all-link:active {
+          background: #4a2828;
+        }
+      }
     </style>
   </head>
   <body>
@@ -880,6 +1392,11 @@
       <span>⏱️</span>
       <h1>Timestamp Settings</h1>
     </div> -->
+
+    <div class="page-reload-hint" id="pageReloadHint" hidden data-i18n="pageReloadHint">
+      Refresh the open ChatGPT tab — it's running an older version of this
+      extension, so settings changes won't apply there until you do.
+    </div>
 
     <div class="tab-list" role="tablist" aria-label="Popup sections">
       <button
@@ -918,6 +1435,18 @@
       >
         Settings
       </button>
+      <button
+        class="tab-btn"
+        id="appearanceTabBtn"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        aria-controls="appearancePanel"
+        data-tab-target="appearancePanel"
+        data-i18n="tabAppearance"
+      >
+        Appearance
+      </button>
     </div>
 
     <section
@@ -928,20 +1457,18 @@
     >
       <div class="setting-group star-section">
         <label class="setting-label" data-i18n="starCurrentChatLabel"
-          >Star Current Chat</label
+          >Bookmark Current Chat</label
         >
       <div class="star-card">
         <div class="star-card-top">
-          <div class="star-meta">
-            <div class="star-kicker" data-i18n="starCurrentChatStatusLabel">
-              Current chat:
-            </div>
-            <div class="star-chat-title" id="starChatTitle"></div>
+          <div class="star-kicker" data-i18n="starCurrentChatStatusLabel">
+            Current chat:
           </div>
           <div class="star-state is-idle" id="starState" data-i18n="starStateLoading">
             Checking current chat...
           </div>
         </div>
+        <div class="star-chat-title" id="starChatTitle"></div>
         <button class="star-btn" id="starToggleBtn" disabled>
           <span class="star-btn-icon" aria-hidden="true">
             <svg viewBox="0 0 16 16">
@@ -950,7 +1477,7 @@
               ></path>
             </svg>
           </span>
-          <span id="starToggleLabel">Star this chat</span>
+          <span id="starToggleLabel">Bookmark this chat</span>
         </button>
         <div class="star-status" id="starStatus"></div>
         <button
@@ -974,14 +1501,17 @@
         <select id="sidebarFilterMode">
           <option value="all" data-i18n="starFilterAll">All chats</option>
           <option value="starred" data-i18n="starFilterStarred">
-            Starred only
+            Bookmarked only
           </option>
         </select>
+        <div class="setting-hint" data-i18n="starFilterHint">
+          Controls which chats stay visible in the ChatGPT sidebar.
+        </div>
       </div>
 
       <div class="setting-group export-section">
         <label class="setting-label" data-i18n="exportChatLabel"
-          >Export Chat (Images & files not supported)</label
+          >Export Chat</label
         >
         <div class="export-row">
           <select id="exportFormat">
@@ -1001,6 +1531,9 @@
             📋 Copy
           </button>
         </div>
+        <div class="setting-hint" data-i18n="exportChatHint">
+          Copies the conversation as text — images and files aren't included.
+        </div>
         <div class="export-status" id="exportStatus"></div>
       </div>
 
@@ -1018,7 +1551,14 @@
 
       <!-- Screen 1: folder list -->
       <div class="bm-screen is-active" data-bm-screen="folders">
-        <div class="bm-section-header">
+        <input
+          type="search"
+          class="bm-search-input"
+          id="bmSearchInput"
+          placeholder="Search bookmarks…"
+          data-i18n-placeholder="bmSearchPlaceholder"
+        />
+        <div class="bm-section-header" id="bmFoldersSectionHeader">
           <span data-i18n="bmFoldersSectionLabel">Folders</span>
           <button
             type="button"
@@ -1037,6 +1577,7 @@
         </div>
         <div id="bmFoldersInlineArea"></div>
         <div id="bmFolderListBody" class="bm-row-list"></div>
+        <div class="bm-usage" id="bmUsage"></div>
       </div>
 
       <!-- Screen 2: bookmark list inside a folder -->
@@ -1100,7 +1641,7 @@
         <div id="bmListBody" class="bm-row-list"></div>
         <div class="bm-list-footer" id="bmListFooter" hidden>
           <button type="button" class="bm-unstar-all-link" id="bmUnstarAllBtn">
-            Unstar all
+            Remove all
           </button>
         </div>
       </div>
@@ -1165,7 +1706,7 @@
           id="bmUnstarBtn"
           data-i18n="bmDetailUnstarButton"
         >
-          Unstar
+          Remove bookmark
         </button>
         <div class="bm-status" id="bmDetailStatus"></div>
       </div>
@@ -1290,6 +1831,129 @@
           Restore defaults
         </button>
         <div class="status" id="status" data-i18n="statusSaved">Saved ✓</div>
+      </div>
+    </section>
+
+    <section
+      class="tab-panel"
+      id="appearancePanel"
+      role="tabpanel"
+      aria-labelledby="appearanceTabBtn"
+    >
+      <div class="setting-group">
+        <div class="color-row">
+          <span class="color-row-label" data-i18n="labelSidebarTimestampColor"
+            >Sidebar timestamp</span
+          >
+          <div class="color-inputs">
+            <label class="color-field">
+              <input type="color" id="colorSidebarPrimaryLight" />
+              <span data-i18n="colorLightLabel">Light</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="colorSidebarPrimaryDark" />
+              <span data-i18n="colorDarkLabel">Dark</span>
+            </label>
+          </div>
+        </div>
+        <div class="color-row">
+          <span class="color-row-label" data-i18n="labelSidebarHoverColor"
+            >Sidebar hover timestamp</span
+          >
+          <div class="color-inputs">
+            <label class="color-field">
+              <input type="color" id="colorSidebarSecondaryLight" />
+              <span data-i18n="colorLightLabel">Light</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="colorSidebarSecondaryDark" />
+              <span data-i18n="colorDarkLabel">Dark</span>
+            </label>
+          </div>
+        </div>
+        <div class="color-row">
+          <span class="color-row-label" data-i18n="labelChatTimestampColor"
+            >Chat timestamp</span
+          >
+          <div class="color-inputs">
+            <label class="color-field">
+              <input type="color" id="colorChatLight" />
+              <span data-i18n="colorLightLabel">Light</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="colorChatDark" />
+              <span data-i18n="colorDarkLabel">Dark</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <span class="toggle-label" data-i18n="labelBoldSidebarTimestamp"
+            >Bold sidebar timestamp</span
+          >
+          <label class="toggle-switch">
+            <input type="checkbox" id="boldSidebarTimestamp" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label" data-i18n="labelBoldChatTimestamp"
+            >Bold chat timestamp</span
+          >
+          <label class="toggle-switch">
+            <input type="checkbox" id="boldChatTimestamp" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label" data-i18n="previewLabel">Preview</div>
+
+        <div class="appearance-section-label" data-i18n="previewSidebarLabel">
+          Sidebar
+        </div>
+        <div class="appearance-preview">
+          <div class="appearance-card is-light">
+            <div class="appearance-title" data-i18n="previewSampleChatTitle">
+              Chat title
+            </div>
+            <div class="appearance-sample" id="apLightSidebarPrimary"></div>
+            <div class="appearance-sample" id="apLightSidebarSecondary"></div>
+          </div>
+          <div class="appearance-card is-dark">
+            <div class="appearance-title" data-i18n="previewSampleChatTitle">
+              Chat title
+            </div>
+            <div class="appearance-sample" id="apDarkSidebarPrimary"></div>
+            <div class="appearance-sample" id="apDarkSidebarSecondary"></div>
+          </div>
+        </div>
+
+        <div class="appearance-section-label" data-i18n="previewChatLabel">
+          Chat
+        </div>
+        <div class="appearance-preview">
+          <div class="appearance-card is-light">
+            <div class="appearance-sample is-chat" id="apLightChat"></div>
+          </div>
+          <div class="appearance-card is-dark">
+            <div class="appearance-sample is-chat" id="apDarkChat"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button
+          class="reset-btn"
+          id="resetColorsBtn"
+          data-i18n="resetAppearanceButton"
+        >
+          Restore default appearance
+        </button>
+        <div class="status" id="appearanceStatus" data-i18n="statusSaved">
+          Saved ✓
+        </div>
       </div>
     </section>
 

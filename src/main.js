@@ -12,6 +12,15 @@ const defaultI18n = {
   exportPlaceholderFileTemplate: "[File: {{fileName}}]",
 };
 
+const defaultTimestampColors = {
+  colorSidebarPrimaryLight: "#4b5563",
+  colorSidebarPrimaryDark: "#e3e3e3",
+  colorSidebarSecondaryLight: "#15803d",
+  colorSidebarSecondaryDark: "#81c995",
+  colorChatLight: "#4b5563",
+  colorChatDark: "#afafaf",
+};
+
 let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
@@ -19,7 +28,10 @@ let userSettings = {
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
+  boldSidebarTimestamp: false,
+  boldChatTimestamp: true,
   starredIds: new Set(),
+  ...defaultTimestampColors,
 };
 
 let userI18n = { ...defaultI18n };
@@ -785,6 +797,15 @@ function exportCurrentChat(format = "markdown") {
 // #endregion
 
 // #region Utils
+// Stored colors come from the popup's color pickers (#rrggbb); anything else
+// (missing key, corrupted storage) falls back to the built-in default.
+function getSettingColor(key) {
+  const value = userSettings[key];
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
+    ? value
+    : defaultTimestampColors[key];
+}
+
 function formatTimestamp(value) {
   if (!value) return "";
   const d = new Date(value);
@@ -814,8 +835,12 @@ function addSidebarTimestampsFiber() {
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
 
-  const primaryColor = isDark ? "#e3e3e3" : "#4B5563";
-  const secondaryColor = isDark ? "#81c995" : "#15803D";
+  const primaryColor = getSettingColor(
+    isDark ? "colorSidebarPrimaryDark" : "colorSidebarPrimaryLight",
+  );
+  const secondaryColor = getSettingColor(
+    isDark ? "colorSidebarSecondaryDark" : "colorSidebarSecondaryLight",
+  );
 
   links.forEach((el) => {
     // find fiber and conversation/gizmo data
@@ -972,6 +997,9 @@ function addSidebarTimestampsFiber() {
       container.appendChild(starBadge);
     }
 
+    container.style.fontWeight = userSettings.boldSidebarTimestamp
+      ? "600"
+      : "400";
     primaryLine.style.color = primaryColor;
     secondaryLine.style.color = secondaryColor;
     primaryLine.style.paddingRight = "14px";
@@ -1101,7 +1129,12 @@ function addChatTimestamps() {
   const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
     userSettings;
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const timestampColor = isDark ? "#afafaf" : "#4B5563";
+  const timestampColor = getSettingColor(
+    isDark ? "colorChatDark" : "colorChatLight",
+  );
+  // Chat stamps historically rendered bold, so bold stays the default when
+  // the setting is missing.
+  const chatBold = userSettings.boldChatTimestamp !== false;
 
   const justifyContent =
     chatTimestampPosition === "left"
@@ -1193,7 +1226,7 @@ function addChatTimestamps() {
     timestampEl.style.cssText = `
       font-size: 11px;
       color: ${timestampColor};
-      font-weight: 600;
+      font-weight: ${chatBold ? "600" : "400"};
       margin-bottom: 4px;
       display: flex;
       width: 100%;
@@ -1204,7 +1237,7 @@ function addChatTimestamps() {
     `;
     indexEl.style.cssText = `
       opacity: 0.85;
-      font-weight: 700;
+      font-weight: ${chatBold ? "700" : "500"};
     `;
 
     // Mark as processed.
