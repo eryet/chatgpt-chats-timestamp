@@ -115,21 +115,19 @@ function isDraftConversationId(id) {
 // Draft id -> real server id, observed via recordDraftIdMapping().
 const draftIdMap = new Map();
 
-// Thread views attach a `conversation` object ({id, serverId$, ...}) a few
-// fibers above each div[data-message-id]. For chats created this session,
-// `id` keeps the WEB: draft id while serverId$() yields the real id.
+// Older thread views attach a `conversation` object ({id, serverId$, ...});
+// newer message components expose localConversationId and conversationId.
+// Preserve the draft-to-server mapping for bookmark lookups in both layouts.
 function findThreadConversation() {
-  const div = document.querySelector("div[data-message-id]");
+  const div = getMessageElements()[0];
   if (!div) return null;
-  const fiberKey = Object.keys(div).find((k) => k.startsWith("__reactFiber$"));
-  if (!fiberKey) return null;
-  let fiber = div[fiberKey];
-  let depth = 0;
-  while (fiber && depth < 30) {
-    const conversation = fiber.memoizedProps?.conversation;
+  for (const props of reactProps(div)) {
+    const conversation = props.conversation;
     if (typeof conversation?.id === "string") return conversation;
-    fiber = fiber.return;
-    depth++;
+    if (isDraftConversationId(props.localConversationId) &&
+        typeof props.conversationId === "string" && !isDraftConversationId(props.conversationId)) {
+      return { id: props.localConversationId, serverId$: () => props.conversationId };
+    }
   }
   return null;
 }
@@ -150,8 +148,7 @@ function resolveConversationId(id) {
 
 // Regular chat links (/c/...), project chat links (/g/g-p-.../c/...),
 // project folders (/g/g-p-.../project), and group chats (/gg/...)
-const SIDEBAR_LINK_SELECTOR =
-  'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"], a[href$="/project"][data-sidebar-item="true"], a[href^="/gg/"]';
+const SIDEBAR_LINK_SELECTOR = SIDEBAR_SELECTOR;
 
 function isGroupChatPath(pathname) {
   return pathname.split("/").filter(Boolean)[0] === "gg";
@@ -163,20 +160,12 @@ function findGroupRoomForCurrentPath() {
   const roomId = getConversationIdFromHref(window.location.href);
   const links = document.querySelectorAll('a[href^="/gg/"]');
   for (const link of links) {
-    const fiberKey = Object.keys(link).find((k) =>
-      k.startsWith("__reactFiber$"),
-    );
-    if (!fiberKey) continue;
-    let fiber = link[fiberKey];
-    let depth = 0;
-    while (fiber && depth < 25) {
-      const room = fiber.memoizedProps?.room;
+    for (const props of reactProps(link)) {
+      const room = props.room;
       if (isGroupRoom(room)) {
         if (!roomId || room.id === roomId) return room;
         break;
       }
-      fiber = fiber.return;
-      depth++;
     }
   }
   return null;
@@ -185,15 +174,9 @@ function findGroupRoomForCurrentPath() {
 // Group chat message prop (internally "calpico") attached one fiber above
 // each div[data-message-id] inside a room.
 function extractGroupMessageFromDiv(div) {
-  const fiberKey = Object.keys(div).find((k) => k.startsWith("__reactFiber$"));
-  if (!fiberKey) return null;
-  let fiber = div[fiberKey];
-  let depth = 0;
-  while (fiber && depth < 15) {
-    const calpicoMessage = fiber.memoizedProps?.calpicoMessage;
+  for (const props of reactProps(div)) {
+    const calpicoMessage = props.calpicoMessage;
     if (calpicoMessage) return calpicoMessage;
-    fiber = fiber.return;
-    depth++;
   }
   return null;
 }
@@ -339,7 +322,7 @@ window.addEventListener("message", (event) => {
     }
 
     // Clear chat timestamp marks when settings change to force re-render
-    document.querySelectorAll("div[data-message-id]").forEach((div) => {
+    getMessageElements().forEach((div) => {
       if (div.dataset.timestampAdded) {
         const existingTimestamp = div.querySelector(".chatgpt-timestamp");
         if (existingTimestamp) {
@@ -408,9 +391,7 @@ function exportCurrentChat(format = "markdown") {
         userI18n.untitledChat;
     } else {
       // Select both regular chat links and project chat links
-      const sidebarLinks = document.querySelectorAll(
-        'a[href^="/c/"], a[href*="/c/"][data-sidebar-item="true"]',
-      );
+      const sidebarLinks = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
       const currentPath = window.location.pathname;
       // Match on resolved ids too: for freshly created chats the sidebar
       // href can still hold the WEB: draft id while the URL has the real id.
@@ -424,28 +405,9 @@ function exportCurrentChat(format = "markdown") {
         );
         if (
           (canonicalId && linkId === canonicalId) ||
-          link.getAttribute("href") === currentPath ||
-          link.classList.contains("bg-token-sidebar-surface-secondary")
+          link.getAttribute("href") === currentPath
         ) {
-          const fiberKey = Object.keys(link).find((k) =>
-            k.startsWith("__reactFiber$"),
-          );
-          if (fiberKey) {
-            let fiber = link[fiberKey];
-            let depth = 0;
-            while (fiber && depth < 25) {
-              const props = fiber.memoizedProps;
-              // Sidebar items pass the conversation as `historyItem` since the
-              // 2026-03 sidebar rework (`conversation` kept for project chats).
-              const candidate = props?.conversation || props?.historyItem;
-              if (candidate?.create_time) {
-                conversationMeta = candidate;
-                break;
-              }
-              fiber = fiber.return;
-              depth++;
-            }
-          }
+          conversationMeta = getSidebarMetadata(link);
           if (conversationMeta) break;
         }
       }
@@ -456,11 +418,12 @@ function exportCurrentChat(format = "markdown") {
       title =
         conversationMeta?.title?.trim() ||
         getSidebarTitleForConversationId(canonicalId) ||
+        document.title?.replace(/\s*[-|]\s*ChatGPT$/, "").trim() ||
         userI18n.untitledChat;
     }
 
     // Collect all messages
-    const messageDivs = document.querySelectorAll("div[data-message-id]");
+    const messageDivs = getMessageElements();
     if (messageDivs.length === 0) {
       return { success: false, message: userI18n.exportNoMessages };
     }
@@ -531,45 +494,9 @@ function exportCurrentChat(format = "markdown") {
         });
       });
     } else {
-      messageDivs.forEach((div) => {
-        const fiberKey = Object.keys(div).find((k) =>
-          k.startsWith("__reactFiber$"),
-        );
-        if (!fiberKey) return;
-
-        let fiber = div[fiberKey];
-        let depth = 0;
-        let messageData = null;
-        let turnIndex = null;
-        let contentReferences = [];
-
-        while (fiber && depth < 150) {
-          const props = fiber.memoizedProps;
-
-          // Get turnIndex
-          if (turnIndex == null && props?.turnIndex != null) {
-            turnIndex = props.turnIndex;
-          }
-
-          // Get message data
-          if (!messageData && props?.message?.content?.parts) {
-            messageData = props.message;
-          }
-
-          // Get content_references for citations
-          if (
-            contentReferences.length === 0 &&
-            props?.message?.metadata?.content_references?.length > 0
-          ) {
-            contentReferences = props.message.metadata.content_references;
-          }
-
-          if (messageData && turnIndex != null) break;
-          fiber = fiber.return;
-          depth++;
-        }
-
+      getExportRecords().forEach(({ message: messageData, turnIndex }) => {
         if (!messageData) return;
+        const contentReferences = messageData.metadata?.content_references || [];
 
         const role = messageData.author?.role || "unknown";
         // Handle parts that can be strings or objects (like images)
@@ -601,9 +528,7 @@ function exportCurrentChat(format = "markdown") {
           return "";
         });
         const content = contentParts.filter(Boolean).join("\n");
-        const timestamp = messageData.create_time
-          ? new Date(messageData.create_time * 1000)
-          : null;
+        const timestamp = parseTimestamp(messageData.create_time);
 
         if (content.trim()) {
           messages.push({
@@ -715,8 +640,8 @@ function exportCurrentChat(format = "markdown") {
     if (format === "markdown") {
       output = `# ${title}\n\n`;
       if (conversationMeta?.create_time) {
-        const created = new Date(conversationMeta.create_time);
-        output += `**${createdLabel}:** ${formatDate(created, dateFormat)}\n\n`;
+        const created = parseTimestamp(conversationMeta.create_time);
+        if (created) output += `**${createdLabel}:** ${formatDate(created, dateFormat)}\n\n`;
       }
       output += `---\n\n`;
 
@@ -739,8 +664,8 @@ function exportCurrentChat(format = "markdown") {
     } else if (format === "plain") {
       output = `${title}\n${"=".repeat(title.length)}\n\n`;
       if (conversationMeta?.create_time) {
-        const created = new Date(conversationMeta.create_time);
-        output += `${createdLabel}: ${formatDate(created, dateFormat)}\n\n`;
+        const created = parseTimestamp(conversationMeta.create_time);
+        if (created) output += `${createdLabel}: ${formatDate(created, dateFormat)}\n\n`;
       }
 
       messages.forEach((msg) => {
@@ -761,12 +686,8 @@ function exportCurrentChat(format = "markdown") {
     } else if (format === "json") {
       const exportData = {
         title,
-        created: conversationMeta?.create_time
-          ? new Date(conversationMeta.create_time).toISOString()
-          : null,
-        updated: conversationMeta?.update_time
-          ? new Date(conversationMeta.update_time).toISOString()
-          : null,
+        created: parseTimestamp(conversationMeta?.create_time)?.toISOString() || null,
+        updated: parseTimestamp(conversationMeta?.update_time)?.toISOString() || null,
         messageCount: messages.length,
         messages: messages.map((msg) => ({
           turn: msg.turnIndex,
@@ -807,9 +728,8 @@ function getSettingColor(key) {
 }
 
 function formatTimestamp(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
+  const d = parseTimestamp(value);
+  if (!d) return "";
   return formatDate(d, userSettings.dateFormat);
 }
 
@@ -831,7 +751,7 @@ function setHoverExpanded(el, expanded) {
 
 // #region Sidebar
 function addSidebarTimestampsFiber() {
-  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
 
@@ -842,43 +762,18 @@ function addSidebarTimestampsFiber() {
     isDark ? "colorSidebarSecondaryDark" : "colorSidebarSecondaryLight",
   );
 
-  links.forEach((el) => {
-    // find fiber and conversation/gizmo data
-    const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
-    if (!fiberKey) return;
-
-    let fiber = el[fiberKey];
-    let depth = 0;
-    let conversation = null;
-    let gizmo = null;
+  links.forEach((link) => {
+    const el = link.closest(".sidebar-item") || link;
+    const conversation = getSidebarMetadata(link);
     let room = null;
-    while (fiber && depth < 25) {
-      const props = fiber.memoizedProps;
-      // Sidebar items pass the conversation as `historyItem` since the
-      // 2026-03 sidebar rework (`conversation` kept for project chats).
-      const candidate = props?.conversation || props?.historyItem;
-      if (candidate?.create_time) {
-        conversation = candidate;
-        break;
+    if (isGroupChatPath(link.getAttribute("href") || "")) {
+      for (const props of reactProps(link)) {
+        if (isGroupRoom(props.room)) { room = props.room; break; }
       }
-      // Project folders have gizmo.gizmo.created_at
-      if (props?.gizmo?.gizmo?.created_at) {
-        gizmo = props.gizmo.gizmo;
-        break;
-      }
-      // Group chats (GROUP_DM rooms)
-      if (isGroupRoom(props?.room)) {
-        room = props.room;
-        break;
-      }
-      fiber = fiber.return;
-      depth++;
     }
 
     const conversationId = resolveConversationId(
-      conversation?.id ||
-        room?.id ||
-        getConversationIdFromHref(el.getAttribute("href")),
+      room?.id || getConversationIdFromHref(link.getAttribute("href")),
     );
     const isStarred = Boolean(conversationId && starredIds.has(conversationId));
 
@@ -894,9 +789,6 @@ function addSidebarTimestampsFiber() {
     if (conversation?.create_time) {
       createdText = formatTimestamp(conversation.create_time);
       updatedText = formatTimestamp(conversation.update_time);
-    } else if (gizmo?.created_at) {
-      createdText = formatTimestamp(gizmo.created_at);
-      updatedText = formatTimestamp(gizmo.updated_at);
     } else if (room) {
       // Rooms whose history isn't loaded expose no creation time; fall back
       // to last activity rather than showing nothing (or a bogus date).
@@ -926,8 +818,9 @@ function addSidebarTimestampsFiber() {
     // Project folders have an icon, so use same offset.
     // Pinned chats (new sidebar section) have a leading icon inside the link
     // that pushes the title right without using ps-9 — match the title offset.
-    const isProjectChat = el.classList.contains("ps-9");
-    const isProjectFolder = el.getAttribute("href")?.endsWith("/project");
+    const isProjectChat = link.classList.contains("ps-9");
+    const isProjectFolder = link.getAttribute("href")?.endsWith("/project") ||
+      link.hasAttribute("data-app-action-sidebar-project-row");
     const hasLeadingIcon =
       !isProjectChat && !isProjectFolder && linkHasLeadingIcon(el);
     const leftOffset =
@@ -966,6 +859,7 @@ function addSidebarTimestampsFiber() {
 
       el.style.position = "relative";
       el.style.overflow = "hidden";
+      if (el.classList.contains("sidebar-item")) el.style.height = "auto";
       el.appendChild(container);
     } else if (container.style.left !== leftOffset) {
       container.style.left = leftOffset;
@@ -1128,7 +1022,7 @@ function addSidebarTimestampsFiber() {
 function addChatTimestamps() {
   const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
     userSettings;
-  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = isDarkTheme();
   const timestampColor = getSettingColor(
     isDark ? "colorChatDark" : "colorChatLight",
   );
@@ -1147,7 +1041,10 @@ function addChatTimestamps() {
   // there — only clean up leftovers (e.g. added by an older version).
   const isGroupChat = isGroupChatPath(window.location.pathname);
 
-  document.querySelectorAll("div[data-message-id]").forEach((div) => {
+  const records = !chatTimestampEnabled || isGroupChat
+    ? getMessageElements().map(element => ({ element }))
+    : getMessageRecords();
+  records.forEach(({ element: div, message, turnIndex }) => {
     let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
 
     // If chat timestamps are disabled, remove any existing ones and clear marker.
@@ -1159,41 +1056,12 @@ function addChatTimestamps() {
       return;
     }
 
-    // Skip if already processed and has timestamp.
-    if (div.dataset.timestampAdded && timestampEl) return;
-
-    // Find fiber and traverse upwards to locate message timestamp.
-    const fiberKey = Object.keys(div).find((k) =>
-      k.startsWith("__reactFiber$"),
-    );
-    if (!fiberKey) return;
-
-    let fiber = div[fiberKey];
-    let depth = 0;
-    let date = null;
-    let turnIndex = null;
-    while (fiber && depth < 150) {
-      const props = fiber.memoizedProps;
-
-      if (turnIndex == null) {
-        const candidateTurnIndex = props?.turnIndex ?? null;
-        if (candidateTurnIndex != null) turnIndex = candidateTurnIndex;
-      }
-
-      if (date == null) {
-        const messages = props?.messages;
-        const candidateSeconds = Number(messages?.[0]?.create_time);
-        if (Number.isFinite(candidateSeconds)) {
-          const candidate = new Date(candidateSeconds * 1000);
-          if (!Number.isNaN(candidate.getTime())) date = candidate;
-        }
-      }
-
-      if (date != null && turnIndex != null) break;
-      fiber = fiber.return;
-      depth++;
+    const date = parseTimestamp(message?.create_time);
+    if (!date) {
+      timestampEl?.remove();
+      delete div.dataset.timestampAdded;
+      return;
     }
-    if (!date) return;
 
     const formatted = formatDate(date, dateFormat);
     if (!formatted) return;
