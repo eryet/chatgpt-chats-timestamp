@@ -473,3 +473,34 @@ test("refresh loop skips hidden tabs and catches up when shown", () => {
   assert.equal(window.document.querySelectorAll(".timestamp-stack-container").length, 2);
   window.close();
 });
+
+test("embedded frame windows in message props do not break timestamps or export", () => {
+  const window = setup('<title>Frames</title><main><div data-message-id="a"></div><div data-message-id="b"></div></main>');
+  // Stand-in for a cross-origin frame's window: every property read throws.
+  const blocked = () => { throw new window.DOMException("Blocked a frame", "SecurityError"); };
+  const frame = new Proxy({}, { get: blocked, getOwnPropertyDescriptor: blocked, ownKeys: blocked });
+  const [first, second] = window.document.querySelectorAll("[data-message-id]");
+  attach(first, { frame }, { message: message("a", "user", "Question") });
+  attach(second, { view: window }, { message: message("b", "assistant", "Answer") });
+  window.addChatTimestamps();
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 2);
+  const result = window.exportCurrentChat("json");
+  assert.equal(result.success, true, result.message);
+  assert.equal(result.messageCount, 2);
+  window.close();
+});
+
+test("dots rooms keep their native message times and skip message lookups", () => {
+  const window = setup('<main><div data-message-id="dot-1"><span class="chatgpt-timestamp">old</span></div></main>');
+  window.history.replaceState(null, "", "/dots/room-1");
+  const element = window.document.querySelector("[data-message-id]");
+  attach(element, {}, { room: { id: "room-1" }, message: { id: "dot-1", role: "user",
+    text: "Hi", createdAt: "2026-09-30T00:00:00Z" } });
+  let lookups = 0;
+  const findData = window.findData;
+  window.findData = (...args) => { lookups++; return findData(...args); };
+  window.addChatTimestamps();
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 0);
+  assert.equal(lookups, 0);
+  window.close();
+});

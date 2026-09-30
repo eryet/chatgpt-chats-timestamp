@@ -150,8 +150,10 @@ function resolveConversationId(id) {
 // project folders (/g/g-p-.../project), and group chats (/gg/...)
 const SIDEBAR_LINK_SELECTOR = SIDEBAR_SELECTOR;
 
+// Group chats (/gg/...) and dots (/dots/...) are messaging rooms that show
+// their own message times; their messages carry no conversation message data.
 function isGroupChatPath(pathname) {
-  return pathname.split("/").filter(Boolean)[0] === "gg";
+  return ["gg", "dots"].includes(pathname.split("/").filter(Boolean)[0]);
 }
 
 // Locate the room object for the currently open group chat by walking the
