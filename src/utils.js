@@ -66,61 +66,80 @@ function getRelativeTime(date) {
   return rtf.format(sign * absYear, "year");
 }
 
+const DATE_FORMAT_OPTIONS = {
+  us: ["en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }],
+  eu: ["en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }],
+  uk: ["en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }],
+  short: [DEFAULT_LOCALE, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }],
+  dateOnly: [DEFAULT_LOCALE, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }],
+  timeOnly: [DEFAULT_LOCALE, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }],
+};
+
+// Date#toLocaleString with options builds a new Intl.DateTimeFormat on every
+// call (~40x slower than reusing one), and every sidebar row and message is
+// re-formatted on each refresh, so keep one formatter per format.
+const dateFormatters = new Map();
+
+function getDateFormatter(format) {
+  let formatter = dateFormatters.get(format);
+  if (!formatter) {
+    const [locale, options] = DATE_FORMAT_OPTIONS[format];
+    formatter = new Intl.DateTimeFormat(locale, options);
+    dateFormatters.set(format, formatter);
+  }
+  return formatter;
+}
+
 function formatDate(date, format) {
   switch (format) {
     case "iso":
       return date.toISOString().slice(0, 19).replace("T", " ");
-    case "us":
-      return date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-    case "eu":
-      return date.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
-    case "uk":
-      return date.toLocaleString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
     case "relative":
       return getRelativeTime(date);
+    case "us":
+    case "eu":
+    case "uk":
     case "short":
-      return date.toLocaleString(DEFAULT_LOCALE, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
     case "dateOnly":
-      return date.toLocaleString(DEFAULT_LOCALE, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
     case "timeOnly":
-      return date.toLocaleString(DEFAULT_LOCALE, {
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-      });
+      return getDateFormatter(format).format(date);
     case "locale":
     default:
       return date.toLocaleString().replace(",", "");

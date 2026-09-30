@@ -398,3 +398,78 @@ test("group chat export preserves sender names, excludes notices and nested segm
   assert.equal(window.getChatContext().conversationId, "room-1");
   window.close();
 });
+
+test("cached date formatters match toLocaleString for every format", () => {
+  const window = setup("<main></main>");
+  const date = new Date("2026-09-29T12:34:56Z");
+  const expected = {
+    us: ["en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
+      minute: "2-digit", second: "2-digit", hour12: true }],
+    eu: ["en-GB", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
+      minute: "2-digit", second: "2-digit", hour12: false }],
+    uk: ["en-GB", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
+      minute: "2-digit", second: "2-digit", hour12: true }],
+    short: [undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }],
+    dateOnly: [undefined, { month: "short", day: "numeric", year: "numeric" }],
+    timeOnly: [undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }],
+  };
+  const locale = window.eval("DEFAULT_LOCALE");
+  for (const [format, [formatLocale, options]] of Object.entries(expected)) {
+    for (let i = 0; i < 2; i++) {
+      assert.equal(window.formatDate(date, format), date.toLocaleString(formatLocale ?? locale, options), format);
+    }
+  }
+  window.close();
+});
+
+test("refreshing unchanged sidebar rows and messages leaves the DOM untouched", async () => {
+  const window = modernPage();
+  window.addSidebarTimestampsFiber();
+  window.addChatTimestamps();
+  const star = window.document.querySelector(".timestamp-star svg");
+  const records = [];
+  const observer = new window.MutationObserver(list => records.push(...list));
+  observer.observe(window.document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  window.addSidebarTimestampsFiber();
+  window.addChatTimestamps();
+  await tick();
+  observer.disconnect();
+  assert.equal(records.length, 0);
+  assert.equal(window.document.querySelector(".timestamp-star svg"), star);
+  // Changed inputs still re-render.
+  window.eval('userSettings.dateFormat = "iso"');
+  window.addSidebarTimestampsFiber();
+  window.addChatTimestamps();
+  assert.match(window.document.querySelector(".timestamp-primary").textContent, /^\d{4}-\d{2}-\d{2} /);
+  assert.match(window.document.querySelector(".chatgpt-turn-time").textContent, /^\d{4}-\d{2}-\d{2} /);
+  window.close();
+});
+
+test("pinned-row layout is measured once, before any sidebar writes", () => {
+  const window = modernPage();
+  const row = window.document.querySelector(".sidebar-item");
+  let measured = 0;
+  row.getBoundingClientRect = () => { measured++; return { left: 0, width: 240 }; };
+  window.document.createRange = () => ({ selectNode() {}, getClientRects: () => [{ left: 36, width: 80 }] });
+  window.addSidebarTimestampsFiber();
+  window.addSidebarTimestampsFiber();
+  assert.equal(measured, 1);
+  assert.equal(row.querySelector(".timestamp-stack-container").style.left, "36px");
+  window.close();
+});
+
+test("refresh loop skips hidden tabs and catches up when shown", () => {
+  const window = modernPage();
+  let hidden = true;
+  Object.defineProperty(window.document, "hidden", { get: () => hidden });
+  let refresh;
+  window.setInterval = (callback) => { refresh = callback; return 1; };
+  window.startRehydrationLoop();
+  refresh();
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 0);
+  hidden = false;
+  window.document.dispatchEvent(new window.Event("visibilitychange"));
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 2);
+  assert.equal(window.document.querySelectorAll(".timestamp-stack-container").length, 2);
+  window.close();
+});
