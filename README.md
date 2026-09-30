@@ -23,9 +23,6 @@ Star any chat for quick access, then organize your bookmarks into folders (up to
 Export your entire conversation to clipboard in multiple formats – Markdown, Plain Text, or JSON.
 Perfect for saving, sharing, or archiving your chats.
 
-🎯 Jump to Message
-Quickly navigate to any specific turn in your conversation with the jump-to feature.
-
 ⚙️ Fully Customizable
 • Multiple date formats – locale-based, relative time ("2 days ago"), or custom
 • Display modes – show created date, last updated, or both
@@ -58,5 +55,8 @@ Distributed under the [MIT](https://choosealicense.com/licenses/mit/) License.
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
+
+Run `npm ci` and `npm test` for the layout compatibility regression tests. See
+[compatibility notes](docs/compatibility.md) for local loading and live verification.
 
 [thought process](https://gist.github.com/eryet/6242ca9013dea5fb37b27d05617bf1b9)

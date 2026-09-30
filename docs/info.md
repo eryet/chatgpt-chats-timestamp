@@ -1,6 +1,145 @@
 
 # Info 
 
+## September 2026 React Fiber update
+
+Inspected on 2026-09-30 using the live ChatGPT DOM and console diagnostics of
+`fiber.memoizedProps`. The examples below show selected fields with illustrative
+IDs and text; they do not contain real conversation content. The older snapshots
+below are retained because the extension still supports those layouts.
+
+### DOM entry points
+
+| Area | New entry point | Notes |
+| --- | --- | --- |
+| Regular chat messages | `[data-chatgpt-search-message-ids]` | Space-separated IDs; the same ID can appear twice. The inspected page had no `div[data-message-id]` or conversation `<article>` elements. |
+| Message grouping | `[data-turn-key]` | Contains both user and assistant messages, rather than one message per wrapper. |
+| Sidebar chat link | `a[data-interactive-row-link]` | The containing `.sidebar-item` is a fixed-height row. Timestamps, hover behavior, and bookmark filtering must operate on the row. |
+| Project folder | `[data-app-action-sidebar-project-row]` | A `div[role="button"]`, not an anchor. Its ID is in `data-app-action-sidebar-project-id`. |
+| Theme | `html[data-theme="dark"]` / `html[data-theme="light"]` | The inspected root used `class="chatgpt-theme"`; the site theme can differ from the operating-system preference. |
+
+React still attaches a `__reactFiber$...` property to the DOM element. Walk its
+`return` chain to read ancestor `memoizedProps`. Depths below are observations,
+not stable contracts; `reactProps()` now allows up to 100 fibers.
+
+### Sidebar metadata
+
+The inspected chat link's `conversation` prop was at ancestor 27, beyond the old
+25-fiber limit. The earlier `historyItem` variant remains supported.
+
+```js
+// Ancestor memoizedProps for a regular chat link
+{
+  conversation: {
+    id: "conversation-id",
+    title: "Example chat",
+    create_time: "2026-09-29T12:00:00Z",
+    update_time: "2026-09-29T12:05:00Z"
+  },
+  conversationId: "conversation-id",
+  isPinned: false,
+  isActive: true
+}
+```
+
+Project folder props were under `project.gizmo` at ancestor 23. Older project
+links used `gizmo.gizmo` instead. Both contain the project ID and
+`created_at` / `updated_at` fields. Match the metadata ID to the row/link ID before
+using its dates; do not take an unrelated conversation from a higher ancestor.
+
+### Message items replace raw message props
+
+The closest useful component supplied `item`, `items`, `index`, `conversationId`,
+`localConversationId`, and `turnId`. The nearby `messages` prop was `undefined`.
+
+```js
+// User component, selected fields
+{
+  index: 0,
+  item: {
+    type: "user-message",
+    messageId: "user-message-id",
+    serverMessageId: "user-message-id",
+    message: "Example question",
+    sentAtMs: null,
+    chatGptImageAttachments: [],
+    chatGptFileAttachments: []
+  }
+}
+
+// Assistant component, selected fields
+{
+  index: 2,
+  item: {
+    type: "assistant-message",
+    messageId: "assistant-message-id",
+    latestMessageId: "assistant-message-id",
+    sourceMessageIds: ["assistant-message-id"],
+    content: "Example answer",
+    contentReferences: [],
+    sentAtMs: null,
+    completed: true
+  }
+}
+```
+
+The inspected turn's `items` contained a user message, a
+`chatgpt-reasoning-group`, and an assistant message. Therefore `index: 2` is an
+item index within that turn, not the displayed conversation message number.
+The DOM search keys were `fallback-turn-0:0:user` and
+`fallback-turn-0:2:assistant`; treat these as opaque search keys.
+
+`normalizeItem()` maps `item.message` / `item.content` into export content and
+preserves image/file placeholders. It excludes reasoning groups. Message lookup
+matches the DOM IDs against `serverMessageId`, `messageId`, `latestMessageId`,
+and `sourceMessageIds`, rather than assuming the first message is the right one.
+
+### Creation dates are not guaranteed in Fiber
+
+Both inspected items had **`sentAtMs: null`**. Do not convert that to zero or use
+the current time. The compatibility adapter uses:
+
+1. A matching server `create_time` captured by `response-data.js`.
+2. A numeric `item.sentAtMs`, converted from milliseconds, when available.
+3. No timestamp when neither source is available.
+
+The response observer starts at `document_start`, reads clones of same-origin
+`/backend-api/` JSON and SSE responses already requested by ChatGPT, and retains
+only message IDs and creation dates in a bounded in-memory map. It makes no
+additional requests. Refresh ChatGPT after loading/reloading the extension so
+the observer can see the page's initial requests.
+
+Legacy raw messages still use `message.create_time` with their ID, author, and
+`content.parts`. Shared date parsing accepts Unix seconds, Unix milliseconds,
+ISO strings, and `Date` objects (the last is needed by group-chat signals).
+
+### Virtualized timeline and bookmark context
+
+Higher ancestors exposed `turn.items`, `entry`, and an `entries` array. The adapter
+uses loaded `entries[].turn.items` for export, including messages no longer
+mounted in the DOM. Numbering counts user and assistant items in order and skips
+reasoning groups. If no usable entries are available, it falls back to mounted
+message elements. It does not fetch history that ChatGPT has not loaded.
+
+Bookmark context also supports a draft `localConversationId` (`WEB:...`) paired
+with a server `conversationId` in the newer props, while retaining the older
+`conversation.id` / `conversation.serverId$()` path. An unresolved draft remains
+unavailable for bookmarking.
+
+### Feature compatibility and verification
+
+The fix is based on v2.2 (`cc6b9d7`). It retains bookmarks, folders, notes, search,
+sidebar filtering and badges, custom colors and font weights, all hover modes,
+date formats and alignment, and Markdown/plain-text/JSON exports. The v2.2 popup,
+storage bridge, and locale files are unchanged. Jump to Turn was removed upstream
+in v2.1; this patch does not restore it.
+
+The 18 regression tests cover the new layout, older props, timestamps, exports,
+bookmark context/filtering, appearance, hover modes, and group-chat behavior.
+Group-chat behavior remains based on the July observations below; it was not
+separately re-inspected live for this update. See [compatibility notes](compatibility.md)
+for the implementation files and manual verification steps.
+
 ## Props
 
 ### Sidebar : children of Link component
