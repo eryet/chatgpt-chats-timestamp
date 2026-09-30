@@ -1,2 +1,18 @@
+# Local notes
 ai-context
+
+# Dependencies and logs
 node_modules/
+npm-debug.log*
+
+# Chrome "Pack extension" output: never commit the private key
+*.pem
+*.crx
+
+# Editors and OS files
+.vscode/
+.idea/
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+desktop.ini
