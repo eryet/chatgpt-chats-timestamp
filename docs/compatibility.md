@@ -31,6 +31,18 @@ response nor a message item supplies a date, the extension leaves it unavailable
 
 Dates may be ISO strings, Unix seconds, or Unix milliseconds. Never substitute the current time when a creation date is unavailable.
 
+## Refresh loop performance
+
+`main.js` re-renders every sidebar row and mounted message every 1.5 seconds,
+so the loop must stay cheap ([#13](https://github.com/eryet/chatgpt-chats-timestamp/issues/13)).
+Before these rules, it blocked the main thread for 50–110 ms per tick with
+76 sidebar rows:
+
+- Skip unchanged rows and messages. `renderedState` stores the last rendered state for each injected element. Don't rewrite `innerHTML` or `style.cssText` on every tick.
+- Read layout before writing. The sidebar pass collects all rows first and then writes. The pinned-row check (`linkHasLeadingIcon`) is cached for each row element, because measuring a row after writing to another forces a synchronous layout for each row.
+- Reuse `Intl.DateTimeFormat` instances. `toLocaleString` with options creates a new formatter on every call.
+- Skip hidden tabs.
+
 ## Testing
 
 Run `npm ci` and `npm test`. Tests use jsdom and synthetic React props, with DOM attributes taken from the live page. No conversation content or account data is stored in the fixtures.

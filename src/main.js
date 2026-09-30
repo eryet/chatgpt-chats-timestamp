@@ -150,8 +150,10 @@ function resolveConversationId(id) {
 // project folders (/g/g-p-.../project), and group chats (/gg/...)
 const SIDEBAR_LINK_SELECTOR = SIDEBAR_SELECTOR;
 
+// Group chats (/gg/...) and dots (/dots/...) are messaging rooms that show
+// their own message times; their messages carry no conversation message data.
 function isGroupChatPath(pathname) {
-  return pathname.split("/").filter(Boolean)[0] === "gg";
+  return ["gg", "dots"].includes(pathname.split("/").filter(Boolean)[0]);
 }
 
 // Locate the room object for the currently open group chat by walking the
@@ -285,24 +287,36 @@ function findFirstTitleTextRect(el) {
   return null;
 }
 
+// Sidebar row element -> whether its title is pushed right by a leading icon.
+// Measuring needs layout, so each row is measured once, not on every refresh.
+const leadingIconCache = new WeakMap();
+
 function linkHasLeadingIcon(el) {
   // Pinned chats render an icon before the title, which pushes the title
   // text to the right. Detect by measuring the gap between the link's left
   // edge and where the title text actually starts. Subtree icon scans give
   // false positives because regular chats also contain hover-revealed action
   // icons (menu "...", etc.).
+  if (leadingIconCache.has(el)) return leadingIconCache.get(el);
   try {
+    // Rows without a layout box or title yet are measured again next time.
     const linkRect = el.getBoundingClientRect();
     if (!linkRect.width) return false;
 
     const titleRect = findFirstTitleTextRect(el);
     if (!titleRect || !titleRect.width) return false;
 
-    return titleRect.left - linkRect.left >= 24;
+    const hasLeadingIcon = titleRect.left - linkRect.left >= 24;
+    leadingIconCache.set(el, hasLeadingIcon);
+    return hasLeadingIcon;
   } catch {
     return false;
   }
 }
+
+// Injected timestamp element -> the state last written to it. The refresh
+// loop skips unchanged rows and messages instead of rewriting their DOM.
+const renderedState = new WeakMap();
 
 const STAR_ICON_SVG =
   '<svg viewBox="0 0 16 16" aria-hidden="true" style="display:block;width:100%;height:100%;fill:currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"></path></svg>';
@@ -754,14 +768,24 @@ function addSidebarTimestampsFiber() {
   const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
+  const { displayMode, hoverMode, sidebarFilterMode } = userSettings;
+  const hoverActive = hoverMode !== "disabled";
 
-  const primaryColor = getSettingColor(
-    isDark ? "colorSidebarPrimaryDark" : "colorSidebarPrimaryLight",
-  );
-  const secondaryColor = getSettingColor(
-    isDark ? "colorSidebarSecondaryDark" : "colorSidebarSecondaryLight",
-  );
+  const style = {
+    primaryColor: getSettingColor(
+      isDark ? "colorSidebarPrimaryDark" : "colorSidebarPrimaryLight",
+    ),
+    secondaryColor: getSettingColor(
+      isDark ? "colorSidebarSecondaryDark" : "colorSidebarSecondaryLight",
+    ),
+    starColor: isDark ? "#fbbf24" : "#b45309",
+    fontWeight: userSettings.boldSidebarTimestamp ? "600" : "400",
+    hoverMode,
+  };
 
+  // Read every row before writing to any of them: measuring a row right after
+  // writing to another forces a synchronous layout per row.
+  const rows = [];
   links.forEach((link) => {
     const el = link.closest(".sidebar-item") || link;
     const conversation = getSidebarMetadata(link);
@@ -776,13 +800,14 @@ function addSidebarTimestampsFiber() {
       room?.id || getConversationIdFromHref(link.getAttribute("href")),
     );
     const isStarred = Boolean(conversationId && starredIds.has(conversationId));
-
-    if (conversationId) {
-      el.style.display =
-        userSettings.sidebarFilterMode === "starred" && !isStarred ? "none" : "";
-    } else {
-      el.style.display = "";
-    }
+    const row = {
+      el,
+      display:
+        conversationId && sidebarFilterMode === "starred" && !isStarred
+          ? "none"
+          : "",
+    };
+    rows.push(row);
 
     // Get timestamps from conversation, gizmo, or group chat room
     let createdText, updatedText;
@@ -794,25 +819,20 @@ function addSidebarTimestampsFiber() {
       // to last activity rather than showing nothing (or a bogus date).
       updatedText = formatTimestamp(readSignal(room, "updatedAt$"));
       createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
-    } else {
-      return;
     }
     if (!createdText) return;
 
     // Determine what to show based on settings
-    const { displayMode, hoverMode } = userSettings;
-    const hoverActive = hoverMode !== "disabled";
-
-    let primaryText, secondaryText;
     if (displayMode === "updated") {
       // Show updated time by default, created on hover
-      primaryText = updatedText || createdText;
-      secondaryText = hoverActive && updatedText ? createdText : "";
+      row.primaryText = updatedText || createdText;
+      row.secondaryText = hoverActive && updatedText ? createdText : "";
     } else {
       // Show created time by default, updated on hover
-      primaryText = createdText;
-      secondaryText = hoverActive ? updatedText : "";
+      row.primaryText = createdText;
+      row.secondaryText = hoverActive ? updatedText : "";
     }
+    row.isStarred = isStarred;
 
     // Project chats have ps-9 class which adds extra left padding (36px).
     // Project folders have an icon, so use same offset.
@@ -823,198 +843,210 @@ function addSidebarTimestampsFiber() {
       link.hasAttribute("data-app-action-sidebar-project-row");
     const hasLeadingIcon =
       !isProjectChat && !isProjectFolder && linkHasLeadingIcon(el);
-    const leftOffset =
+    row.leftOffset =
       isProjectChat || isProjectFolder || hasLeadingIcon ? "36px" : "10px";
-
-    let container = el.querySelector(":scope > .timestamp-stack-container");
-    if (!container) {
-      container = document.createElement("div");
-      container.className = "timestamp-stack-container";
-      container.style.cssText = `
-        position: absolute;
-        bottom: 4px;
-        left: ${leftOffset};
-        right: 10px;
-        overflow: hidden;
-        font-size: 10px;
-        font-family: ui-monospace,'SF Mono',Monaco,monospace;
-        opacity: 0.9;
-        pointer-events: none;
-        line-height: 12px;
-        white-space: nowrap;
-        padding-right: 14px;
-      `;
-
-      const secondaryLine = document.createElement("div");
-      secondaryLine.className = "timestamp-secondary";
-      secondaryLine.style.display = "none";
-      secondaryLine.style.color = secondaryColor;
-
-      const primaryLine = document.createElement("div");
-      primaryLine.className = "timestamp-primary";
-      primaryLine.style.color = primaryColor;
-
-      container.appendChild(primaryLine);
-      container.appendChild(secondaryLine);
-
-      el.style.position = "relative";
-      el.style.overflow = "hidden";
-      if (el.classList.contains("sidebar-item")) el.style.height = "auto";
-      el.appendChild(container);
-    } else if (container.style.left !== leftOffset) {
-      container.style.left = leftOffset;
-    }
-
-    const primaryLine = container.querySelector(":scope > .timestamp-primary");
-    const secondaryLine = container.querySelector(
-      ":scope > .timestamp-secondary",
-    );
-    if (!primaryLine || !secondaryLine) return;
-
-    let starBadge = container.querySelector(":scope > .timestamp-star");
-    if (!starBadge) {
-      starBadge = document.createElement("span");
-      starBadge.className = "timestamp-star";
-      starBadge.style.cssText = `
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 11px;
-        height: 11px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: ${isDark ? "#fbbf24" : "#b45309"};
-        opacity: 0.95;
-      `;
-      starBadge.innerHTML = STAR_ICON_SVG;
-      container.appendChild(starBadge);
-    }
-
-    container.style.fontWeight = userSettings.boldSidebarTimestamp
-      ? "600"
-      : "400";
-    primaryLine.style.color = primaryColor;
-    secondaryLine.style.color = secondaryColor;
-    primaryLine.style.paddingRight = "14px";
-    secondaryLine.style.paddingRight = "14px";
-
-    primaryLine.textContent = primaryText;
-    secondaryLine.textContent = secondaryText;
-    starBadge.innerHTML = STAR_ICON_SVG;
-    starBadge.style.display = isStarred ? "flex" : "none";
-    starBadge.style.color = isDark ? "#fbbf24" : "#b45309";
-
-    // Handle display based on hover mode
-    if (!hoverActive || !secondaryText) {
-      // No hover - hide secondary, reset swap styles
-      secondaryLine.style.display = "none";
-      el.style.paddingBottom = "15px";
-      primaryLine.style.transition = "none";
-      primaryLine.style.transform = "none";
-      primaryLine.style.opacity = "";
-      secondaryLine.style.opacity = "";
-      container.classList.remove("timestamp-swap-mode");
-    } else if (hoverMode === "swap") {
-      // Swap mode - primary slides up & fades, secondary slides up from below
-      el.style.paddingBottom = "15px";
-      container.classList.add("timestamp-swap-mode");
-      container.style.overflow = "hidden";
-
-      // Primary line setup
-      primaryLine.style.display = "block";
-      primaryLine.style.transition =
-        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
-      primaryLine.style.transform = "translateY(0)";
-      primaryLine.style.opacity = "1";
-
-      // Secondary line: stacked on top, starts below
-      secondaryLine.style.position = "absolute";
-      secondaryLine.style.top = "0";
-      secondaryLine.style.left = "0";
-      secondaryLine.style.right = "0";
-      secondaryLine.style.display = "block";
-      secondaryLine.style.transition =
-        "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
-      secondaryLine.style.transform = "translateY(100%)";
-      secondaryLine.style.opacity = "0";
-
-      if (!el.dataset.timestampSwapBound) {
-        const swapIn = () => {
-          if (userSettings.hoverMode !== "swap") return;
-          const p = el.querySelector(".timestamp-primary");
-          const s = el.querySelector(".timestamp-secondary");
-          if (p) {
-            p.style.transform = "translateY(-100%)";
-            p.style.opacity = "0";
-          }
-          if (s) {
-            s.style.transform = "translateY(0)";
-            s.style.opacity = "1";
-          }
-        };
-        const swapOut = () => {
-          if (userSettings.hoverMode !== "swap") return;
-          const p = el.querySelector(".timestamp-primary");
-          const s = el.querySelector(".timestamp-secondary");
-          if (p) {
-            p.style.transform = "translateY(0)";
-            p.style.opacity = "1";
-          }
-          if (s) {
-            s.style.transform = "translateY(100%)";
-            s.style.opacity = "0";
-          }
-        };
-        el.addEventListener("mouseenter", swapIn);
-        el.addEventListener("mouseleave", swapOut);
-        el.addEventListener("focusin", swapIn);
-        el.addEventListener("focusout", swapOut);
-        el.dataset.timestampSwapBound = "true";
-      }
-
-      // Keep the right state if the loop runs while hovered
-      const isHovered = el.matches(":hover");
-      const isFocused = el.contains(document.activeElement);
-      if (isHovered || isFocused) {
-        primaryLine.style.transform = "translateY(-100%)";
-        primaryLine.style.opacity = "0";
-        secondaryLine.style.transform = "translateY(0)";
-        secondaryLine.style.opacity = "1";
-      }
-    } else if (hoverMode === "classic") {
-      // Classic mode - show secondary line below on hover
-      container.classList.remove("timestamp-swap-mode");
-      primaryLine.style.transition = "none";
-      primaryLine.style.transform = "none";
-      primaryLine.style.opacity = "";
-      secondaryLine.style.position = "";
-      secondaryLine.style.top = "";
-      secondaryLine.style.left = "";
-      secondaryLine.style.right = "";
-      secondaryLine.style.transition = "";
-      secondaryLine.style.transform = "";
-      secondaryLine.style.transformOrigin = "";
-      secondaryLine.style.opacity = "";
-
-      if (!el.dataset.timestampHoverBound) {
-        const expand = () => setHoverExpanded(el, true);
-        const collapse = () => setHoverExpanded(el, false);
-        el.addEventListener("mouseenter", expand);
-        el.addEventListener("mouseleave", collapse);
-        el.addEventListener("focusin", expand);
-        el.addEventListener("focusout", collapse);
-        el.dataset.timestampHoverBound = "true";
-      }
-
-      // Keep the right state if the loop runs while hovered
-      const isHovered = el.matches(":hover");
-      const isFocused = el.contains(document.activeElement);
-      setHoverExpanded(el, isHovered || isFocused);
-    }
-
-    el.dataset.timestampAdded = "true";
   });
+
+  rows.forEach((row) => {
+    if (row.el.style.display !== row.display) row.el.style.display = row.display;
+    if (row.primaryText) renderSidebarTimestamp(row, style);
+  });
+}
+
+function renderSidebarTimestamp(row, style) {
+  const { el, primaryText, secondaryText, isStarred, leftOffset } = row;
+  const { primaryColor, secondaryColor, starColor, fontWeight, hoverMode } =
+    style;
+
+  let container = el.querySelector(":scope > .timestamp-stack-container");
+  const state = [
+    primaryText,
+    secondaryText,
+    isStarred,
+    leftOffset,
+    primaryColor,
+    secondaryColor,
+    starColor,
+    fontWeight,
+    hoverMode,
+  ].join("|");
+  if (container && renderedState.get(container) === state) return;
+
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "timestamp-stack-container";
+    container.style.cssText = `
+      position: absolute;
+      bottom: 4px;
+      left: ${leftOffset};
+      right: 10px;
+      overflow: hidden;
+      font-size: 10px;
+      font-family: ui-monospace,'SF Mono',Monaco,monospace;
+      opacity: 0.9;
+      pointer-events: none;
+      line-height: 12px;
+      white-space: nowrap;
+      padding-right: 14px;
+    `;
+
+    const secondaryLine = document.createElement("div");
+    secondaryLine.className = "timestamp-secondary";
+    secondaryLine.style.display = "none";
+
+    const primaryLine = document.createElement("div");
+    primaryLine.className = "timestamp-primary";
+
+    container.appendChild(primaryLine);
+    container.appendChild(secondaryLine);
+
+    el.style.position = "relative";
+    el.style.overflow = "hidden";
+    if (el.classList.contains("sidebar-item")) el.style.height = "auto";
+    el.appendChild(container);
+  } else if (container.style.left !== leftOffset) {
+    container.style.left = leftOffset;
+  }
+
+  const primaryLine = container.querySelector(":scope > .timestamp-primary");
+  const secondaryLine = container.querySelector(
+    ":scope > .timestamp-secondary",
+  );
+  if (!primaryLine || !secondaryLine) return;
+
+  let starBadge = container.querySelector(":scope > .timestamp-star");
+  if (!starBadge) {
+    starBadge = document.createElement("span");
+    starBadge.className = "timestamp-star";
+    starBadge.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 11px;
+      height: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.95;
+    `;
+    starBadge.innerHTML = STAR_ICON_SVG;
+    container.appendChild(starBadge);
+  }
+
+  container.style.fontWeight = fontWeight;
+  primaryLine.style.color = primaryColor;
+  secondaryLine.style.color = secondaryColor;
+  primaryLine.style.paddingRight = "14px";
+  secondaryLine.style.paddingRight = "14px";
+
+  primaryLine.textContent = primaryText;
+  secondaryLine.textContent = secondaryText;
+  starBadge.style.display = isStarred ? "flex" : "none";
+  starBadge.style.color = starColor;
+
+  // Handle display based on hover mode
+  if (hoverMode === "disabled" || !secondaryText) {
+    // No hover - hide secondary, reset swap styles
+    secondaryLine.style.display = "none";
+    el.style.paddingBottom = "15px";
+    primaryLine.style.transition = "none";
+    primaryLine.style.transform = "none";
+    primaryLine.style.opacity = "";
+    secondaryLine.style.opacity = "";
+    container.classList.remove("timestamp-swap-mode");
+  } else if (hoverMode === "swap") {
+    // Swap mode - primary slides up & fades, secondary slides up from below
+    el.style.paddingBottom = "15px";
+    container.classList.add("timestamp-swap-mode");
+    container.style.overflow = "hidden";
+
+    // Keep the right state if this runs while hovered
+    const swapped = el.matches(":hover") || el.contains(document.activeElement);
+
+    // Primary line setup
+    primaryLine.style.display = "block";
+    primaryLine.style.transition =
+      "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+    primaryLine.style.transform = swapped ? "translateY(-100%)" : "translateY(0)";
+    primaryLine.style.opacity = swapped ? "0" : "1";
+
+    // Secondary line: stacked on top, starts below
+    secondaryLine.style.position = "absolute";
+    secondaryLine.style.top = "0";
+    secondaryLine.style.left = "0";
+    secondaryLine.style.right = "0";
+    secondaryLine.style.display = "block";
+    secondaryLine.style.transition =
+      "transform .3s cubic-bezier(0.76, 0, 0.24, 1), opacity .3s ease";
+    secondaryLine.style.transform = swapped ? "translateY(0)" : "translateY(100%)";
+    secondaryLine.style.opacity = swapped ? "1" : "0";
+
+    if (!el.dataset.timestampSwapBound) {
+      const swapIn = () => {
+        if (userSettings.hoverMode !== "swap") return;
+        const p = el.querySelector(".timestamp-primary");
+        const s = el.querySelector(".timestamp-secondary");
+        if (p) {
+          p.style.transform = "translateY(-100%)";
+          p.style.opacity = "0";
+        }
+        if (s) {
+          s.style.transform = "translateY(0)";
+          s.style.opacity = "1";
+        }
+      };
+      const swapOut = () => {
+        if (userSettings.hoverMode !== "swap") return;
+        const p = el.querySelector(".timestamp-primary");
+        const s = el.querySelector(".timestamp-secondary");
+        if (p) {
+          p.style.transform = "translateY(0)";
+          p.style.opacity = "1";
+        }
+        if (s) {
+          s.style.transform = "translateY(100%)";
+          s.style.opacity = "0";
+        }
+      };
+      el.addEventListener("mouseenter", swapIn);
+      el.addEventListener("mouseleave", swapOut);
+      el.addEventListener("focusin", swapIn);
+      el.addEventListener("focusout", swapOut);
+      el.dataset.timestampSwapBound = "true";
+    }
+  } else if (hoverMode === "classic") {
+    // Classic mode - show secondary line below on hover
+    container.classList.remove("timestamp-swap-mode");
+    primaryLine.style.transition = "none";
+    primaryLine.style.transform = "none";
+    primaryLine.style.opacity = "";
+    secondaryLine.style.position = "";
+    secondaryLine.style.top = "";
+    secondaryLine.style.left = "";
+    secondaryLine.style.right = "";
+    secondaryLine.style.transition = "";
+    secondaryLine.style.transform = "";
+    secondaryLine.style.transformOrigin = "";
+    secondaryLine.style.opacity = "";
+
+    if (!el.dataset.timestampHoverBound) {
+      const expand = () => setHoverExpanded(el, true);
+      const collapse = () => setHoverExpanded(el, false);
+      el.addEventListener("mouseenter", expand);
+      el.addEventListener("mouseleave", collapse);
+      el.addEventListener("focusin", expand);
+      el.addEventListener("focusout", collapse);
+      el.dataset.timestampHoverBound = "true";
+    }
+
+    // Keep the right state if this runs while hovered
+    const isHovered = el.matches(":hover");
+    const isFocused = el.contains(document.activeElement);
+    setHoverExpanded(el, isHovered || isFocused);
+  }
+
+  el.dataset.timestampAdded = "true";
+  renderedState.set(container, state);
 }
 // #endregion
 
@@ -1069,6 +1101,11 @@ function addChatTimestamps() {
     // Double-check that chat timestamps are still enabled before adding.
     if (!userSettings.chatTimestampEnabled) return;
 
+    const indexText = turnIndex == null ? "" : `#${turnIndex}`;
+    const state = [indexText, formatted, timestampColor, chatBold, justifyContent]
+      .join("|");
+    if (timestampEl && renderedState.get(timestampEl) === state) return;
+
     if (!timestampEl) {
       timestampEl = document.createElement("span");
       timestampEl.className = "chatgpt-timestamp";
@@ -1086,7 +1123,6 @@ function addChatTimestamps() {
       timestampEl.append(indexEl, timeEl);
     }
 
-    const indexText = turnIndex == null ? "" : `#${turnIndex}`;
     indexEl.textContent = indexText;
     indexEl.style.display = indexText ? "inline-block" : "none";
     timeEl.textContent = formatted;
@@ -1110,34 +1146,28 @@ function addChatTimestamps() {
 
     // Mark as processed.
     div.dataset.timestampAdded = "true";
+    renderedState.set(timestampEl, state);
   });
 }
 // #endregion
 
 // #region Init
+function refreshTimestamps() {
+  // Keep the WEB: draft id -> real id map fresh so sidebar star badges and
+  // popup lookups match chats created this session.
+  recordDraftIdMapping();
+  addSidebarTimestampsFiber();
+  addChatTimestamps();
+}
+
 function startRehydrationLoop() {
-  let lastCount = 0;
+  // Background tabs show nothing, so skip them and catch up when shown.
   setInterval(() => {
-    // Keep the WEB: draft id -> real id map fresh so sidebar star badges and
-    // popup lookups match chats created this session.
-    recordDraftIdMapping();
-
-    const chatLinks = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
-    const currentCount = chatLinks.length;
-
-    if (currentCount !== lastCount) {
-      // console.log(
-      //   `[Timestamp] sidebar count changed (${lastCount} → ${currentCount}) — refreshing`
-      // );
-      lastCount = currentCount;
-      addSidebarTimestampsFiber();
-    } else {
-      addSidebarTimestampsFiber();
-    }
-
-    // Also update chat timestamps in the same loop
-    addChatTimestamps();
+    if (!document.hidden) refreshTimestamps();
   }, 1500);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshTimestamps();
+  });
 }
 
 setTimeout(startRehydrationLoop, 2000);

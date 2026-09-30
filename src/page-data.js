@@ -35,12 +35,24 @@ function findData(root, predicate) {
     const [value, depth] = queue[i];
     if (!value || typeof value !== "object" || seen.has(value)) continue;
     seen.add(value);
-    if (predicate(value)) return value;
-    if (depth >= 6 || value.nodeType || value.$$typeof) continue;
-    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-      if (["children", "_owner", "return", "alternate", "stateNode"].includes(key)) continue;
-      const child = descriptor.value;
-      if (child && typeof child === "object") queue.push([child, depth + 1]);
+    // Props can hold the window of an embedded frame (e.g. inline
+    // visualizations). Reading a cross-origin window throws a SecurityError,
+    // so skip windows and anything else that cannot be inspected.
+    try {
+      if (value.window === value) continue;
+      if (predicate(value)) return value;
+      if (depth >= 6 || value.nodeType || value.$$typeof) continue;
+      // Read keys one at a time and stop once the queue holds everything that
+      // will be visited; copying every descriptor of a large store or list
+      // made unmatched lookups take ~1s per refresh.
+      for (const key of Object.getOwnPropertyNames(value)) {
+        if (queue.length >= 500) break;
+        if (["children", "_owner", "return", "alternate", "stateNode"].includes(key)) continue;
+        const child = Object.getOwnPropertyDescriptor(value, key).value;
+        if (child && typeof child === "object") queue.push([child, depth + 1]);
+      }
+    } catch {
+      continue;
     }
   }
   return null;

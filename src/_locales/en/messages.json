@@ -237,6 +237,9 @@
   "exportCopyFailed": {
     "message": "Failed to copy to clipboard"
   },
+  "exportUnsupportedPage": {
+    "message": "Export isn't available on this page yet."
+  },
   "exportFailed": {
     "message": "Export failed"
   },

@@ -237,6 +237,9 @@
   "exportCopyFailed": {
     "message": "無法複製到剪貼簿"
   },
+  "exportUnsupportedPage": {
+    "message": "此頁面暫不支援匯出。"
+  },
   "exportFailed": {
     "message": "匯出失敗"
   },

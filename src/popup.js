@@ -658,6 +658,21 @@ function showExportStatus(message, type = "") {
   }
 }
 
+// Dots rooms (/dots/<id>) don't expose exportable message data yet.
+function isExportUnsupportedUrl(urlString) {
+  if (!isChatGptUrl(urlString)) return false;
+  return new URL(urlString).pathname.split("/").filter(Boolean)[0] === "dots";
+}
+
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  if (!isExportUnsupportedUrl(tabs[0]?.url)) return;
+  exportBtn.disabled = true;
+  exportFormatSelect.disabled = true;
+  showExportStatus(
+    t("exportUnsupportedPage") || "Export isn't available on this page yet.",
+  );
+});
+
 exportBtn.addEventListener("click", () => {
   const format = exportFormatSelect.value;
   exportBtn.disabled = true;
