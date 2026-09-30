@@ -3,67 +3,64 @@
 Store listing copy for the Chrome Web Store dashboard. Keep in sync with the
 feature list in `README.md` when releasing a new version.
 
-Last updated for: **v1.9**
+Last updated for: **v2.2**
 
 ## English
 
 ```text
-See exactly when each conversation was created in the sidebar.
+See when every ChatGPT conversation was created — right in the sidebar.
 
-How to use:
-Install the extension and open ChatGPT – timestamps appear automatically! Click the extension icon to customize date formats, toggle in-chat timestamps, and adjust display preferences.
+Install, open ChatGPT, and timestamps appear automatically. Click the extension icon to make it yours.
 
-💬 In-Chat Message Timestamps (enabled by default)
-Every message in your conversation displays its timestamp. Don't need it? Easily toggle it off in settings.
+🕒 Sidebar Timestamps
+Every chat in the sidebar shows when it was created. Hover to see when it was last updated.
 
-👥 Group Chat Support
-Group chats get sidebar timestamps too – created time, with last activity on hover – and can be starred and exported just like regular conversations. (In-chat stamps are skipped there since ChatGPT's group chat UI already shows message times.)
+💬 Message Timestamps
+Each message in a conversation shows its own time and turn number. Don't need it? Turn it off with one switch.
 
-⭐ Bookmarks with Folders & Notes
-Star any chat for quick access, then organize your bookmarks into folders (up to 2 levels) and add personal notes so you remember why each chat matters. The new "Bookmarks" tab lets you rename folders, move bookmarks between them, jump straight into any saved chat, or wipe a whole view with a single "Unstar all" action.
+⭐ Bookmarks
+Bookmark important chats, sort them into folders, and add your own notes. Search by title or note to find any saved chat in seconds.
 
 📋 Export Chat
-Export your entire conversation to clipboard in multiple formats – Markdown, Plain Text, or JSON.
-Perfect for saving, sharing, or archiving your chats.
+Copy a whole conversation as Markdown, plain text, or JSON — great for saving, sharing, or archiving.
 
-🎯 Jump to Message
-Quickly navigate to any specific turn in your conversation with the jump-to feature.
+🎨 Make It Yours
+Pick your own timestamp colors for light and dark themes, choose bold or regular text, and preview every change instantly.
 
-⚙️ Fully Customizable
-• Multiple date formats – locale-based, relative time ("2 days ago"), or custom
-• Display modes – show created date, last updated, or both
-• Hover modes – choose how additional timestamp details appear on hover
-• Adjustable timestamp position
-• Support dark mode and light mode
+⚙️ Flexible Settings
+• Date formats: your locale, ISO, relative time ("2h ago"), and more
+• Show created time or last updated time
+• Timestamp position: left, center, or right
+• Works with group chats and projects
+• Light and dark mode, everywhere
 ```
 
 ## 繁體中文（zh-TW）
 
 ```text
-查看側邊欄中每個對話的確切建立時間。
+在側邊欄直接看到每個 ChatGPT 對話的建立時間。
 
-使用方式：
-安裝擴充功能並開啟 ChatGPT – 時間戳會自動顯示！點擊擴充功能圖示即可自訂日期格式、切換對話內時間戳，以及調整顯示偏好設定。
+安裝後開啟 ChatGPT，時間戳就會自動顯示。點擊擴充功能圖示，打造你自己的使用方式。
 
-💬 對話內訊息時間戳（預設開啟）
-對話中的每則訊息都會顯示時間戳。不需要？可在設定中輕鬆關閉。
+🕒 側邊欄時間戳
+側邊欄的每個對話都會顯示建立時間，滑鼠懸停即可查看最後更新時間。
 
-👥 群組聊天支援
-群組聊天同樣會在側邊欄顯示時間戳 – 顯示建立時間，懸停時顯示最後活動時間 – 也能像一般對話一樣加入星號與匯出。（群組聊天內不會另外加上訊息時間戳，因為 ChatGPT 的群組聊天介面本身已會顯示訊息時間。）
+💬 訊息時間戳
+對話中的每則訊息都會顯示時間與回合編號。不需要？一個開關即可關閉。
 
-⭐ 書籤：資料夾與筆記
-將任何對話加上星號以便快速存取，再將書籤整理到資料夾中（最多兩層），並加上個人筆記，記下每個對話對你的重要之處。「書籤」分頁可讓你重新命名資料夾、在資料夾間移動書籤、直接開啟任何已儲存的對話，或透過「全部取消星號」一鍵清空整個檢視。
+⭐ 書籤
+將重要對話加入書籤，整理到資料夾並加上自己的筆記。輸入標題或筆記關鍵字，幾秒內就能找到任何已儲存的對話。
 
 📋 匯出對話
-將整段對話複製到剪貼簿，支援多種格式 – Markdown、純文字或 JSON。適合儲存、分享或封存你的對話紀錄。
+將整段對話複製為 Markdown、純文字或 JSON，方便儲存、分享或封存。
 
-🎯 跳轉至訊息
-透過跳轉功能，快速導覽至對話中的任何特定回合。
+🎨 打造你的風格
+自訂淺色與深色主題下的時間戳顏色、選擇粗體或一般字體，所有變更都能即時預覽。
 
-⚙️ 完全可自訂
-• 多種日期格式 – 依地區顯示、相對時間（「2 天前」）或自訂格式
-• 顯示模式 – 顯示建立日期、最後更新時間，或兩者同時顯示
-• 懸停模式 – 選擇懸停時顯示額外時間戳資訊的方式
-• 可調整時間戳位置
-• 支援深色模式與淺色模式
+⚙️ 彈性設定
+• 多種日期格式：系統語系、ISO、相對時間（「2 小時前」）等
+• 顯示建立時間或最後更新時間
+• 時間戳位置：靠左、置中或靠右
+• 支援群組聊天與專案
+• 淺色與深色模式全面支援
 ```
