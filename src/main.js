@@ -314,6 +314,36 @@ function linkHasLeadingIcon(el) {
   }
 }
 
+// Sidebar row element -> where its timestamp sits. Rows differ in height
+// (pinned chats and projects are taller than recents), so anchoring to the
+// row bottom leaves a wider gap under some titles; anchor to the title instead.
+const sidebarStampLayout = new WeakMap();
+
+function measureSidebarStamp(el) {
+  try {
+    // Rows without a layout box or title yet are measured again next time.
+    const rowRect = el.getBoundingClientRect();
+    const titleRect = findFirstTitleTextRect(el);
+    if (!rowRect.height || !titleRect?.height) return;
+
+    // Row height without the bottom padding added for the timestamp.
+    const contentBottom =
+      rowRect.height - parseFloat(getComputedStyle(el).paddingBottom);
+    const top = Math.ceil(titleRect.bottom - rowRect.top);
+    sidebarStampLayout.set(el, {
+      top,
+      // Room for one 12px line plus the row's 4px bottom gap.
+      paddingBottom: Math.max(0, Math.round(top + 16 - contentBottom)),
+    });
+  } catch {
+    // Unmeasured rows keep the timestamp at the row bottom.
+  }
+}
+
+function sidebarRowPadding(el) {
+  return sidebarStampLayout.get(el)?.paddingBottom ?? 15;
+}
+
 // Injected timestamp element -> the state last written to it. The refresh
 // loop skips unchanged rows and messages instead of rewriting their DOM.
 const renderedState = new WeakMap();
@@ -759,7 +789,7 @@ function setHoverExpanded(el, expanded) {
   const shouldExpand =
     expanded && hasSecondary && userSettings.hoverMode === "classic";
   secondaryEl.style.display = shouldExpand ? "block" : "none";
-  el.style.paddingBottom = shouldExpand ? "28px" : "15px";
+  el.style.paddingBottom = `${sidebarRowPadding(el) + (shouldExpand ? 13 : 0)}px`;
 }
 // #endregion
 
@@ -851,6 +881,18 @@ function addSidebarTimestampsFiber() {
     if (row.el.style.display !== row.display) row.el.style.display = row.display;
     if (row.primaryText) renderSidebarTimestamp(row, style);
   });
+
+  // Titles only settle once the writes above make rows height: auto, so new
+  // rows are measured afterwards (one layout for the batch) and re-anchored
+  // before the browser paints.
+  const unmeasured = rows.filter(
+    (row) =>
+      row.primaryText && row.display !== "none" && !sidebarStampLayout.has(row.el),
+  );
+  unmeasured.forEach((row) => measureSidebarStamp(row.el));
+  unmeasured.forEach((row) => {
+    if (sidebarStampLayout.has(row.el)) renderSidebarTimestamp(row, style);
+  });
 }
 
 function renderSidebarTimestamp(row, style) {
@@ -859,11 +901,14 @@ function renderSidebarTimestamp(row, style) {
     style;
 
   let container = el.querySelector(":scope > .timestamp-stack-container");
+  const layout = sidebarStampLayout.get(el);
   const state = [
     primaryText,
     secondaryText,
     isStarred,
     leftOffset,
+    layout?.top,
+    layout?.paddingBottom,
     primaryColor,
     secondaryColor,
     starColor,
@@ -877,7 +922,6 @@ function renderSidebarTimestamp(row, style) {
     container.className = "timestamp-stack-container";
     container.style.cssText = `
       position: absolute;
-      bottom: 4px;
       left: ${leftOffset};
       right: 10px;
       overflow: hidden;
@@ -907,6 +951,8 @@ function renderSidebarTimestamp(row, style) {
   } else if (container.style.left !== leftOffset) {
     container.style.left = leftOffset;
   }
+  container.style.top = layout ? `${layout.top}px` : "";
+  container.style.bottom = layout ? "auto" : "4px";
 
   const primaryLine = container.querySelector(":scope > .timestamp-primary");
   const secondaryLine = container.querySelector(
@@ -948,7 +994,7 @@ function renderSidebarTimestamp(row, style) {
   if (hoverMode === "disabled" || !secondaryText) {
     // No hover - hide secondary, reset swap styles
     secondaryLine.style.display = "none";
-    el.style.paddingBottom = "15px";
+    el.style.paddingBottom = `${sidebarRowPadding(el)}px`;
     primaryLine.style.transition = "none";
     primaryLine.style.transform = "none";
     primaryLine.style.opacity = "";
@@ -956,7 +1002,7 @@ function renderSidebarTimestamp(row, style) {
     container.classList.remove("timestamp-swap-mode");
   } else if (hoverMode === "swap") {
     // Swap mode - primary slides up & fades, secondary slides up from below
-    el.style.paddingBottom = "15px";
+    el.style.paddingBottom = `${sidebarRowPadding(el)}px`;
     container.classList.add("timestamp-swap-mode");
     container.style.overflow = "hidden";
 

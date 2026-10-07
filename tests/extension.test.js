@@ -445,16 +445,44 @@ test("refreshing unchanged sidebar rows and messages leaves the DOM untouched", 
   window.close();
 });
 
-test("pinned-row layout is measured once, before any sidebar writes", () => {
+function mockRowLayout(window, row, height, title) {
+  let measured = 0;
+  row.getBoundingClientRect = () => { measured++; return { left: 0, width: 240, top: 0, height }; };
+  window.document.createRange = () => ({ selectNode() {}, getClientRects: () => [{ left: 36, width: 80, ...title }] });
+  return () => measured;
+}
+
+test("sidebar row layout is measured once per row, not on every refresh", () => {
   const window = modernPage();
   const row = window.document.querySelector(".sidebar-item");
-  let measured = 0;
-  row.getBoundingClientRect = () => { measured++; return { left: 0, width: 240 }; };
-  window.document.createRange = () => ({ selectNode() {}, getClientRects: () => [{ left: 36, width: 80 }] });
+  const measured = mockRowLayout(window, row, 41, { top: 7, bottom: 25, height: 18 });
   window.addSidebarTimestampsFiber();
   window.addSidebarTimestampsFiber();
-  assert.equal(measured, 1);
-  assert.equal(row.querySelector(".timestamp-stack-container").style.left, "36px");
+  // Once for the leading icon before any writes, once for the title after.
+  assert.equal(measured(), 2);
+  const container = row.querySelector(".timestamp-stack-container");
+  assert.equal(container.style.left, "36px");
+  // A regular row keeps the same timestamp position and padding as before.
+  assert.equal(container.style.top, "25px");
+  assert.equal(container.style.bottom, "auto");
+  assert.equal(row.style.paddingBottom, "15px");
+  window.close();
+});
+
+test("taller pinned and project rows keep the timestamp right under the title", () => {
+  const window = modernPage();
+  window.eval('userSettings.hoverMode = "classic"');
+  const row = window.document.querySelector(".sidebar-item");
+  // 9px taller than a regular row, all of it below the title.
+  mockRowLayout(window, row, 50, { top: 7, bottom: 25, height: 18 });
+  window.addSidebarTimestampsFiber();
+  const container = row.querySelector(".timestamp-stack-container");
+  assert.equal(container.style.top, "25px");
+  assert.equal(row.style.paddingBottom, "6px");
+  window.setHoverExpanded(row, true);
+  assert.equal(row.style.paddingBottom, "19px");
+  window.setHoverExpanded(row, false);
+  assert.equal(row.style.paddingBottom, "6px");
   window.close();
 });
 
