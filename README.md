@@ -1,4 +1,8 @@
+<!-- When you change this file, update README.zh-TW.md to match. -->
+
 # ChatGPT Chats Timestamp
+
+**English** · [繁體中文](README.zh-TW.md)
 
 <a title="Users" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img alt="Chrome Web Store users" src="https://img.shields.io/chrome-web-store/users/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
 <a title="Version" target="_blank" href="https://chromewebstore.google.com/detail/chatgpt-chats-timestamp/fjfjjofbppklnihhhdfcojbdbghpolhm"><img alt="Chrome Web Store version" src="https://img.shields.io/chrome-web-store/v/fjfjjofbppklnihhhdfcojbdbghpolhm"></a>
