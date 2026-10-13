@@ -1,6 +1,43 @@
 
 # Info 
 
+## October 2026 Spaces sidebar
+
+Inspected on 2026-10-13 on `/spaces/<space id>` with console diagnostics of
+`fiber.memoizedProps`. IDs below are illustrative.
+
+The Spaces sidebar has a **Recents** section (pages and sites) and a
+**Spaces** section. Its rows are not links:
+
+| Area | Entry point | Notes |
+| --- | --- | --- |
+| Section | `section[data-app-action-sidebar-section]` | `data-app-action-sidebar-section-heading` is `Recents` or `Spaces`. The chat sidebar uses the same markup, including a `Recents` heading, so headings can't tell the two sidebars apart. |
+| Row list | `[data-appearance]` inside the section | Holds the rows. The section heading toggle is also `[role="button"]`, but sits outside the list. |
+| Row | `div[role="button"].sidebar-item` | No ID or href. A fixed 36px row whose 36px child centers the title, so `height: auto` plus bottom padding keeps the title in place. |
+| Chat sidebar project rows | `[data-app-action-sidebar-project-row]` | Also `[role="button"]` inside a section list, so they are excluded from Spaces rows. |
+
+Each row's own record sits a few fibers above the row and below the list's
+host fiber (`stateNode` is the `[data-appearance]` element). Props above the
+list are shared by every row, so the lookup stops at the list.
+
+```js
+// Page row (Recents): props.page, 6 ancestors up (list at 30)
+{ page_id: "page_…", title: "Example page",
+  created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-02T00:00:00Z" }
+
+// Site or file row (Recents, *.html): props.item.node, 3 ancestors up (list at 5)
+{ id: "libfile_…", file_name: "example.html", origination_thread_id: "…",
+  record_creation_time: "2026-09-24T01:00:00Z", updated_at: "2026-09-25T01:00:00Z" }
+
+// Space row: props.space, 19 ancestors up (list at 21)
+{ id: "page_space_…", name: "Example space",
+  created_at: "2026-10-13T05:00:00Z", updated_at: "2026-10-13T06:00:00Z" }
+```
+
+A page's `title` is empty for an untitled page, and its emoji icon is the
+row's first text node. Titles start 36px from the row's left edge on every
+row, so the offset is fixed instead of measured.
+
 ## September 2026 React Fiber update
 
 Inspected on 2026-09-30 using the live ChatGPT DOM and console diagnostics of

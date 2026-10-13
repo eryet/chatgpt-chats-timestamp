@@ -15,6 +15,8 @@ The September 2026 page inspected during this repair uses:
 
 `src/page-data.js` owns selectors, React data lookup, date normalization, and theme detection. It also supports the older message IDs, sidebar links, and project links. Match message and conversation IDs before using data from an ancestor: a turn can contain reasoning and multiple messages with different creation dates.
 
+Spaces sidebar rows (spaces, pages, and sites) have no ID or href to match. `getSpacesRowMetadata` stops the fiber walk at the list that holds the row instead, because props above it are shared by every row ([info.md](info.md#october-2026-spaces-sidebar)). These rows can't be bookmarked, and the sidebar filter never hides them.
+
 The live React diagnostic confirmed sidebar `conversation` data at ancestor 27
 (the old code stopped at 25), and project data under `project.gizmo`. Message
 components now receive `item` objects with `type: "user-message"` or

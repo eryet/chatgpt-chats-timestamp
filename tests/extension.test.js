@@ -532,3 +532,106 @@ test("dots rooms keep their native message times and skip message lookups", () =
   assert.equal(lookups, 0);
   window.close();
 });
+
+// Like attach(), but each entry is a whole fiber, so one can carry the DOM
+// element it renders as stateNode.
+function attachFibers(element, ...fibers) {
+  element.__reactFiber$test = fibers.reverse().reduce((parent, fiber) =>
+    ({ ...fiber, return: parent }), null);
+}
+
+function spacesPage() {
+  const window = setup(`
+    <section data-app-action-sidebar-section data-app-action-sidebar-section-heading="Recents">
+      <div role="button">Recents</div>
+      <div data-appearance="plain">
+        <div role="button" class="sidebar-item" id="page"><div><span>Fixture page</span></div></div>
+        <div role="button" class="sidebar-item" id="site"><div><span>fixture.html</span></div></div>
+        <div role="button" class="sidebar-item" id="bare"><div><span>No record</span></div></div>
+      </div>
+    </section>
+    <section data-app-action-sidebar-section data-app-action-sidebar-section-heading="Spaces">
+      <div data-appearance="plain">
+        <div role="button" class="sidebar-item" id="space"><div><span>Fixture space</span></div></div>
+      </div>
+    </section>`);
+  const doc = window.document;
+  const [recents, spaces] = doc.querySelectorAll("[data-appearance]");
+  const empty = n => Array.from({ length: n }, () => ({ memoizedProps: {} }));
+  // A space record above a list is shared by all of its rows and never used.
+  const above = list => [{ stateNode: list, memoizedProps: {} }, { memoizedProps: { space: {
+    id: "page_space_shared", name: "Shared", created_at: "2026-01-01T00:00:00Z",
+  } } }];
+  // Live October layout: each row's own record sits below its list, 6
+  // ancestors up for pages, 3 for sites and 19 for spaces.
+  attachFibers(doc.getElementById("page"), ...empty(6), { memoizedProps: { page: {
+    page_id: "page_1", title: "Fixture page",
+    created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-02T00:00:00Z",
+  } } }, ...empty(23), ...above(recents));
+  attachFibers(doc.getElementById("site"), ...empty(3), { memoizedProps: { item: { node: {
+    id: "libfile_1", file_name: "fixture.html",
+    record_creation_time: "2026-09-24T01:00:00Z", updated_at: "2026-09-25T01:00:00Z",
+  } } } }, ...empty(1), ...above(recents));
+  attachFibers(doc.getElementById("bare"), ...empty(4), ...above(recents));
+  attachFibers(doc.getElementById("space"), ...empty(19), { memoizedProps: { space: {
+    id: "page_space_1", name: "Fixture space",
+    created_at: "2026-10-13T05:00:00Z", updated_at: "2026-10-13T06:00:00Z",
+  } } }, ...empty(1), ...above(spaces));
+  return window;
+}
+
+const stampText = (window, id) =>
+  window.document.querySelector(`#${id} > .timestamp-stack-container > .timestamp-primary`)?.textContent;
+
+test("spaces, pages and sites show their own dates, never a shared record", () => {
+  const window = spacesPage();
+  window.eval('userSettings.dateFormat = "iso"; userSettings.hoverMode = "classic"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(stampText(window, "page"), "2026-10-01 00:00:00");
+  assert.equal(stampText(window, "site"), "2026-09-24 01:00:00");
+  assert.equal(stampText(window, "space"), "2026-10-13 05:00:00");
+  // The record above the list belongs to no single row, and section
+  // headings are not rows.
+  assert.equal(window.document.querySelectorAll(".timestamp-stack-container").length, 3);
+  const space = window.document.getElementById("space");
+  assert.equal(space.style.height, "auto");
+  assert.equal(space.querySelector(".timestamp-stack-container").style.left, "36px");
+  window.setHoverExpanded(space, true);
+  assert.equal(space.querySelector(".timestamp-secondary").textContent, "2026-10-13 06:00:00");
+  window.eval('userSettings.displayMode = "updated"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(stampText(window, "page"), "2026-10-02 00:00:00");
+  window.close();
+});
+
+test("spaces rows have no bookmark star and the bookmark filter leaves them visible", () => {
+  const window = spacesPage();
+  window.eval('userSettings.starredIds = ["page_1", "page_space_1"]; userSettings.sidebarFilterMode = "starred"');
+  window.addSidebarTimestampsFiber();
+  for (const id of ["page", "site", "bare", "space"]) {
+    assert.equal(window.document.getElementById(id).style.display, "");
+  }
+  for (const star of window.document.querySelectorAll(".timestamp-star")) {
+    assert.equal(star.style.display, "none");
+  }
+  window.close();
+});
+
+test("chat sidebar project rows in section lists are not treated as spaces rows", () => {
+  const window = setup(`
+    <section data-app-action-sidebar-section data-app-action-sidebar-section-heading="Projects">
+      <div data-appearance="plain">
+        <div role="button" class="sidebar-item" data-app-action-sidebar-project-row
+          data-app-action-sidebar-project-id="g-p-abc"><span>Project</span></div>
+      </div>
+    </section>`);
+  const row = window.document.querySelector("[data-app-action-sidebar-project-row]");
+  attach(row, {}, { project: { gizmo: {
+    id: "g-p-abc", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-02T00:00:00Z",
+  } }, page: { page_id: "page_x", created_at: "2026-01-01T00:00:00Z" } });
+  window.eval('userSettings.dateFormat = "iso"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelectorAll(".timestamp-stack-container").length, 1);
+  assert.equal(row.querySelector(".timestamp-primary").textContent, "2026-09-01 00:00:00");
+  window.close();
+});

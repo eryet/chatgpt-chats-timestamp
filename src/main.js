@@ -798,8 +798,7 @@ function addSidebarTimestampsFiber() {
   const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
-  const { displayMode, hoverMode, sidebarFilterMode } = userSettings;
-  const hoverActive = hoverMode !== "disabled";
+  const { hoverMode, sidebarFilterMode } = userSettings;
 
   const style = {
     primaryColor: getSettingColor(
@@ -852,16 +851,7 @@ function addSidebarTimestampsFiber() {
     }
     if (!createdText) return;
 
-    // Determine what to show based on settings
-    if (displayMode === "updated") {
-      // Show updated time by default, created on hover
-      row.primaryText = updatedText || createdText;
-      row.secondaryText = hoverActive && updatedText ? createdText : "";
-    } else {
-      // Show created time by default, updated on hover
-      row.primaryText = createdText;
-      row.secondaryText = hoverActive ? updatedText : "";
-    }
+    setSidebarRowText(row, createdText, updatedText);
     row.isStarred = isStarred;
 
     // Project chats have ps-9 class which adds extra left padding (36px).
@@ -877,8 +867,22 @@ function addSidebarTimestampsFiber() {
       isProjectChat || isProjectFolder || hasLeadingIcon ? "36px" : "10px";
   });
 
+  // Spaces, pages and sites aren't chats: they can't be bookmarked and the
+  // bookmark filter never hides them. Every row has an icon before its title
+  // (an emoji icon is text, so it can't be measured like pinned chats).
+  document.querySelectorAll(SPACES_ROW_SELECTOR).forEach((el) => {
+    const record = getSpacesRowMetadata(el);
+    const createdText = formatTimestamp(record?.create_time);
+    if (!createdText) return;
+    const row = { el, isStarred: false, leftOffset: "36px" };
+    setSidebarRowText(row, createdText, formatTimestamp(record.update_time));
+    rows.push(row);
+  });
+
   rows.forEach((row) => {
-    if (row.el.style.display !== row.display) row.el.style.display = row.display;
+    if (row.display !== undefined && row.el.style.display !== row.display) {
+      row.el.style.display = row.display;
+    }
     if (row.primaryText) renderSidebarTimestamp(row, style);
   });
 
@@ -893,6 +897,19 @@ function addSidebarTimestampsFiber() {
   unmeasured.forEach((row) => {
     if (sidebarStampLayout.has(row.el)) renderSidebarTimestamp(row, style);
   });
+}
+
+function setSidebarRowText(row, createdText, updatedText) {
+  const hoverActive = userSettings.hoverMode !== "disabled";
+  if (userSettings.displayMode === "updated") {
+    // Show updated time by default, created on hover
+    row.primaryText = updatedText || createdText;
+    row.secondaryText = hoverActive && updatedText ? createdText : "";
+  } else {
+    // Show created time by default, updated on hover
+    row.primaryText = createdText;
+    row.secondaryText = hoverActive ? updatedText : "";
+  }
 }
 
 function renderSidebarTimestamp(row, style) {

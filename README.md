@@ -24,6 +24,8 @@ Every chat in the sidebar shows when it was created. Hover a chat to see when it
 - **Classic**: the other time appears below
 - **Disabled**: no hover change
 
+Spaces, pages, and sites in the Spaces sidebar get timestamps too. They can't be bookmarked, so **Sidebar Filter** never hides them.
+
 ### 💬 Message timestamps
 
 Each message shows its turn number and the time it was sent, like `#4 10/1/2026 10:15:25 AM`. Place it on the left, center, or right, or turn it off. Times come from data ChatGPT has already loaded. If a time isn't available, it stays blank instead of being guessed.

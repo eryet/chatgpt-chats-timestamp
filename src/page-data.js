@@ -5,6 +5,11 @@ const SIDEBAR_SELECTOR =
   'a[href^="/c/"], a[href*="/c/"][data-sidebar-item], ' +
   'a[href*="/c/"][data-interactive-row-link], ' +
   'a[href$="/project"][data-sidebar-item], [data-app-action-sidebar-project-row], a[href^="/gg/"]';
+// Spaces sidebar rows (spaces, pages, sites) are buttons inside a section's
+// list. The chat sidebar uses the same markup for project rows.
+const SPACES_ROW_SELECTOR =
+  'section[data-app-action-sidebar-section] [data-appearance] [role="button"]' +
+  ':not([data-app-action-sidebar-project-row])';
 
 function parseTimestamp(value) {
   if (Object.prototype.toString.call(value) === "[object Date]") {
@@ -17,12 +22,14 @@ function parseTimestamp(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function* reactProps(element) {
+// Stops before the fiber of `boundary`, an ancestor element, when given.
+function* reactProps(element, boundary) {
   const key = Object.getOwnPropertyNames(element).find((name) =>
     name.startsWith("__reactFiber$") || name.startsWith("__reactInternalInstance$"),
   );
   let fiber = key && element[key];
   for (let depth = 0; fiber && depth < 100; depth++, fiber = fiber.return) {
+    if (boundary && fiber.stateNode === boundary) return;
     if (fiber.memoizedProps) yield fiber.memoizedProps;
   }
 }
@@ -171,6 +178,37 @@ function getSidebarMetadata(element) {
       title: data.title ?? data.display?.name,
       create_time: data.create_time ?? data.created_at,
       update_time: data.update_time ?? data.updated_at,
+    };
+  }
+  return null;
+}
+
+// Spaces rows have no id or href to match against. Each row's own page, file
+// or space record sits below the list that holds the row; props above the
+// list are shared by every row in it, so the walk stops there.
+function getSpacesRowMetadata(element) {
+  const list = element.parentElement?.closest("[data-appearance]");
+  if (!list) return null;
+  for (const props of reactProps(element, list)) {
+    const { page, space } = props;
+    const file = props.item?.node;
+    if (page?.page_id) return {
+      id: page.page_id,
+      title: page.title,
+      create_time: page.created_at,
+      update_time: page.updated_at,
+    };
+    if (file?.id) return {
+      id: file.id,
+      title: file.file_name,
+      create_time: file.record_creation_time ?? file.file_upload_time,
+      update_time: file.updated_at,
+    };
+    if (space?.id && space.created_at) return {
+      id: space.id,
+      title: space.name,
+      create_time: space.created_at,
+      update_time: space.updated_at,
     };
   }
   return null;
