@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 800px; overflow: hidden; position: relative; }
+</style>
+</head>
+<body>
+<script src="sidebar.js"></script>
+<script>
+  const SB = "#f9f9f9", HL = "#eaeaea", INK = "#0d0d0d", GRAY = "#7b7b7b";
+  drawSidebar({
+    image: "white.png",
+    textFont: '"Segoe UI", "Microsoft JhengHei UI", "Microsoft JhengHei", sans-serif',
+    stampFont: 'Consolas, "Microsoft JhengHei UI", monospace',
+    textSize: 29, stampSize: 21.5, stampWeight: 400, textNudge: 0, stampNudge: 0,
+    lines: [
+      [139, 169, 84, 280, SB, 92, INK, "text", "新對話"],
+      [211, 242, 84, 280, SB, 92, INK, "text", "搜尋對話"],
+      [283, 318, 84, 280, SB, 92, INK, "text", "檔案庫"],
+      [359, 391, 84, 280, SB, 92, INK, "text", "專案"],
+      [461, 482, 26, 130, SB, 34, "#8e8f92", "text", "對話"],
+      [527, 549, 26, 420, HL, 35, INK, "text", "京都五日行程"],
+      [564, 580, 26, 420, HL, 35, GRAY, "stamp", "2026/10/1 上午10:15:25"],
+      [614, 636, 26, 450, SB, 34, INK, "text", "東京 → 大阪 JR Pass 划算嗎"],
+      [650, 666, 26, 450, SB, 35, GRAY, "stamp", "2026/9/30 下午9:42:10"],
+      [700, 729, 26, 450, SB, 34, INK, "text", "Q3 營運報告摘要"],
+      [739, 755, 26, 450, SB, 35, GRAY, "stamp", "2026/9/25 上午10:05:38"],
+    ],
+  });
+</script>
+</body>
+</html>

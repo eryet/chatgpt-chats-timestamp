@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=block");
+
+:root {
+  --ink: #23252b;
+  --green: #2c945f;
+  --body: #3f4652;
+  --strong: #111827;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1280px; height: 800px; overflow: hidden; }
+body {
+  position: relative;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 520px at 100% 100%, rgba(44, 148, 95, 0.10), transparent 70%),
+    radial-gradient(700px 480px at 0% 100%, rgba(44, 148, 95, 0.06), transparent 70%),
+    radial-gradient(800px 500px at 60% 0%, rgba(255, 255, 255, 0.9), transparent 70%),
+    #f6faf8;
+}
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(31, 41, 55, 0.09) 1px, transparent 1.6px);
+  background-size: 24px 24px;
+  background-position: 12px 12px;
+  pointer-events: none;
+}
+
+.brand {
+  position: absolute;
+  left: 72px;
+  top: 63px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-weight: 700;
+  font-size: 21px;
+  color: var(--green);
+  letter-spacing: 0.02em;
+}
+.brand .latin { font-family: "Poppins", sans-serif; font-weight: 600; letter-spacing: 0; }
+.icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.18), 0 2px 6px rgba(17, 24, 39, 0.12);
+  flex: none;
+}
+.icon img { width: 100%; height: 100%; display: block; }
+
+.headline {
+  position: absolute;
+  left: 72px;
+  font-weight: 900;
+  font-size: 60px;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.headline .green { color: var(--green); display: block; }
+
+.bullets {
+  position: absolute;
+  left: 76px;
+  list-style: none;
+  font-size: 21px;
+  color: var(--body);
+  letter-spacing: 0.01em;
+}
+.bullets li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 48px;
+}
+.bullets b { color: var(--strong); font-weight: 700; }
+.bullets .latin { font-family: "Inter", "Noto Sans TC", sans-serif; }
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--green);
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.check svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.card {
+  position: absolute;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 24px 48px rgba(17, 24, 39, 0.14), 0 4px 12px rgba(17, 24, 39, 0.08);
+}
+.card.dark { background: #1f1f1f; border-color: rgba(255, 255, 255, 0.06); box-shadow: 0 24px 48px rgba(17, 24, 39, 0.28), 0 4px 12px rgba(17, 24, 39, 0.16); }
+.card iframe {
+  border: 0;
+  display: block;
+  transform-origin: 0 0;
+  width: 400px;
+  height: 10px;
+}

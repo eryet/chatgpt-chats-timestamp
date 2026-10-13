@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .big-icon { position: absolute; left: 72px; top: 91px; width: 128px; height: 128px; border-radius: 26px; }
+  .hero-title { position: absolute; left: 68px; top: 246px; line-height: 1.08; }
+  .hero-title .latin { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 66px; color: var(--ink); display: block; letter-spacing: -0.01em; }
+  .hero-title .zh { font-weight: 900; font-size: 64px; color: var(--green); display: block; letter-spacing: 0.04em; margin-top: 4px; }
+  .sub { position: absolute; left: 72px; top: 420px; font-size: 24px; line-height: 1.55; color: #4b5563; letter-spacing: 0.02em; }
+  .chips { position: absolute; left: 72px; top: 551px; width: 520px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { height: 36px; padding: 0 17px; border-radius: 999px; background: #daede3; border: 1px solid #b9dcc9; color: #245c40; font-size: 17px; font-weight: 500; display: inline-flex; align-items: center; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+  <div class="icon big-icon"><img src="../.build/assets/icon.png" alt=""></div>
+  <div class="hero-title"><span class="latin">ChatGPT</span><span class="zh">對話時間戳</span></div>
+  <p class="sub">在 ChatGPT 側邊欄直接看到<br>每個對話的建立時間。</p>
+  <div class="chips">
+    <span class="chip">側邊欄時間戳</span><span class="chip">訊息時間戳</span><span class="chip">書籤</span>
+    <span class="chip">匯出</span><span class="chip">淺色與深色模式</span>
+  </div>
+  <div class="card" data-id="a" data-scale="1" data-height="540" style="left:640px; top:127px"><iframe src="../.build/popup/shot.html#id=a&tab=functionality&theme=light"></iframe></div>
+  <div class="card dark" data-id="b" data-scale="1" style="left:946px; top:83px"><iframe src="../.build/popup/shot.html#id=b&tab=bookmarks&theme=dark"></iframe></div>
+  <script src="common.js"></script>
+</body>
+</html>

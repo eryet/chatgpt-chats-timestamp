@@ -3,7 +3,7 @@
 Store listing copy for the Chrome Web Store dashboard. Keep in sync with the
 feature list in `README.md` when releasing a new version.
 
-Last updated for: **v2.2**
+Last updated for: **v2.3**
 
 ## English
 
@@ -13,7 +13,7 @@ See when every ChatGPT conversation was created — right in the sidebar.
 Install, open ChatGPT, and timestamps appear automatically. Click the extension icon to make it yours.
 
 🕒 Sidebar Timestamps
-Every chat in the sidebar shows when it was created. Hover to see when it was last updated.
+Every chat in the sidebar shows when it was created. Hover to see when it was last updated. Spaces, pages, and sites in the Spaces sidebar get timestamps too.
 
 💬 Message Timestamps
 Each message in a conversation shows its own time and turn number. Don't need it? Turn it off with one switch.
@@ -43,7 +43,7 @@ Pick your own timestamp colors for light and dark themes, choose bold or regular
 安裝後開啟 ChatGPT，時間戳就會自動顯示。點擊擴充功能圖示，打造你自己的使用方式。
 
 🕒 側邊欄時間戳
-側邊欄的每個對話都會顯示建立時間，滑鼠懸停即可查看最後更新時間。
+側邊欄的每個對話都會顯示建立時間，滑鼠懸停即可查看最後更新時間。「空間」側邊欄中的空間、頁面與網站也會顯示時間戳。
 
 💬 訊息時間戳
 對話中的每則訊息都會顯示時間與回合編號。不需要？一個開關即可關閉。
