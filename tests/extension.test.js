@@ -213,6 +213,65 @@ test("virtualized timeline exports unmounted messages and keeps visible numberin
   window.close();
 });
 
+test("chats kept mounted in inactive pages are not numbered, stamped or exported", () => {
+  const window = setup(`
+    <div data-app-shell-active-page="false"><main><div data-turn-key="old">
+      <div data-chatgpt-search-message-ids="old-user"></div>
+      <div data-chatgpt-search-message-ids="old-answer"></div>
+    </div></main></div>
+    <div data-app-shell-active-page="true"><main><div data-turn-key="new">
+      <div data-chatgpt-search-message-ids="new-user"></div>
+      <div data-chatgpt-search-message-ids="new-answer"></div>
+    </div></main></div>`);
+  const [oldUser, oldAnswer, newUser, newAnswer] =
+    window.document.querySelectorAll("[data-chatgpt-search-message-ids]");
+  const turn = (prefix, text) => [
+    { type: "user-message", messageId: `${prefix}-user`, message: `${text} question`, sentAtMs: 1790683200000 },
+    { type: "assistant-message", messageId: `${prefix}-answer`, content: `${text} answer`, sentAtMs: 1790683205000 },
+  ];
+  for (const [elements, items] of [[[oldUser, oldAnswer], turn("old", "Old")], [[newUser, newAnswer], turn("new", "New")]]) {
+    const entries = [{ turn: { items } }];
+    elements.forEach((element, index) => attach(element, { item: items[index], items, index }, { entries }));
+  }
+  window.addChatTimestamps();
+  assert.equal(oldUser.querySelector(".chatgpt-timestamp"), null);
+  assert.equal(newUser.querySelector(".chatgpt-turn-index").textContent, "#1");
+  assert.equal(newAnswer.querySelector(".chatgpt-turn-index").textContent, "#2");
+  const data = JSON.parse(window.exportCurrentChat("json").content);
+  assert.deepEqual(data.messages.map(message => message.content), ["New question", "New answer"]);
+  window.close();
+});
+
+test("replies that worked first are stamped above the Worked for block", () => {
+  const window = setup(`<main>
+    <div data-turn-key="worked">
+      <div><div data-chatgpt-search-message-ids="user-1"></div></div>
+      <div><span hidden data-chatgpt-agent-turn-start></span><div class="worked">Worked for 1m 39s</div></div>
+      <div><div data-chatgpt-search-message-ids="answer-1 answer-1"></div></div>
+    </div>
+    <div data-turn-key="direct">
+      <div><div data-chatgpt-search-message-ids="user-2"></div></div>
+      <div><span hidden data-chatgpt-agent-turn-start></span><div data-chatgpt-search-message-ids="answer-2"></div></div>
+    </div></main>`);
+  const [user1, answer1, user2, answer2] = window.document.querySelectorAll("[data-chatgpt-search-message-ids]");
+  const markers = window.document.querySelectorAll("[data-chatgpt-agent-turn-start]");
+  for (const [element, id] of [[user1, "user-1"], [answer1, "answer-1"], [user2, "user-2"], [answer2, "answer-2"]]) {
+    attach(element, { message: message(id, id.startsWith("user") ? "user" : "assistant", id) });
+  }
+  window.addChatTimestamps();
+  window.addChatTimestamps();
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 4);
+  assert.ok(user1.firstChild.classList.contains("chatgpt-timestamp"));
+  assert.equal(markers[0].nextElementSibling.querySelector(".chatgpt-turn-index").textContent, "#2");
+  assert.equal(answer1.querySelector(".chatgpt-timestamp"), null);
+  // Without a block in between, the stamp stays inside the reply.
+  assert.ok(answer2.firstChild.classList.contains("chatgpt-timestamp"));
+  window.eval("userSettings.chatTimestampEnabled = false");
+  window.addChatTimestamps();
+  assert.equal(window.document.querySelectorAll(".chatgpt-timestamp").length, 0);
+  window.close();
+});
+
 const tick = () => new Promise(resolve => setImmediate(resolve));
 async function waitForTime(window, id) {
   for (let attempt = 0; attempt < 100; attempt++) {

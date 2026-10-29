@@ -17,6 +17,8 @@ The September 2026 page inspected during this repair uses:
 
 Spaces sidebar rows (spaces, pages, and sites) have no ID or href to match. `getSpacesRowMetadata` stops the fiber walk at the list that holds the row instead, because props above it are shared by every row ([info.md](info.md#october-2026-spaces-sidebar)). These rows can't be bookmarked, and the sidebar filter never hides them.
 
+Chats opened earlier in the session stay mounted in hidden pages (`[data-app-shell-active-page="false"]`). `getMessageElements` skips them, so numbering, stamps, and export only see the open chat. A reply with a "Worked for" block is stamped at the turn's `[data-chatgpt-agent-turn-start]` marker, above the block ([info.md](info.md#october-2026-cached-chat-pages)).
+
 The live React diagnostic confirmed sidebar `conversation` data at ancestor 27
 (the old code stopped at 25), and project data under `project.gizmo`. Message
 components now receive `item` objects with `type: "user-message"` or

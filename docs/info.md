@@ -1,6 +1,37 @@
 
 # Info 
 
+## October 2026 cached chat pages
+
+Inspected on 2026-10-29 by switching between chats in the sidebar.
+
+ChatGPT keeps every chat opened from the sidebar mounted after you leave it.
+Each visited chat has its own page wrapper, `[data-app-shell-active-page]`.
+The open chat's wrapper is `"true"`; earlier ones are `"false"` and sit inside a
+`display: none` workspace. Each page has its own `main`, so a `main …` query
+returns messages from every chat visited since the last reload. Switching back
+to a chat reuses its page.
+
+Messages are read only outside `[data-app-shell-active-page="false"]`. Before
+that, numbering continued from the chats opened earlier (#3, #4 in the second
+chat), and export returned the first visited chat's messages under the open
+chat's title.
+
+### "Worked for" block
+
+Replies that worked or reasoned for a while (every Pro reply) show a "Worked
+for 1m 39s" block between the user message and the reply. Each
+`[data-turn-key]` turn holds a hidden `span[data-chatgpt-agent-turn-start]`
+where the assistant's part begins:
+
+- With a "Worked for" block, the marker is the block's first child, and the
+  reply is in a later sibling block.
+- Without one, the marker is the reply's previous sibling.
+
+The reply's stamp goes right after the marker, so it sits above the block the
+way the user's stamp sits above their message. Without a block, the stamp stays
+inside the reply.
+
 ## October 2026 Spaces sidebar
 
 Inspected on 2026-10-13 on `/spaces/<space id>` with console diagnostics of

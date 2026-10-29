@@ -368,10 +368,7 @@ window.addEventListener("message", (event) => {
     // Clear chat timestamp marks when settings change to force re-render
     getMessageElements().forEach((div) => {
       if (div.dataset.timestampAdded) {
-        const existingTimestamp = div.querySelector(".chatgpt-timestamp");
-        if (existingTimestamp) {
-          existingTimestamp.remove();
-        }
+        locateChatStamp(div).stamps.forEach((el) => el.remove());
         delete div.dataset.timestampAdded;
       }
     });
@@ -1114,6 +1111,21 @@ function renderSidebarTimestamp(row, style) {
 // #endregion
 
 // #region Chat
+// A stamp sits at the top of its message. Replies that worked first show a
+// "Worked for 1m 39s" block between the turn's start marker and the message,
+// so their stamp goes right after the marker, above that block.
+function locateChatStamp(div) {
+  const marker = getAgentTurnStart(div);
+  let next = marker?.nextElementSibling;
+  const markerStamp = next?.classList.contains("chatgpt-timestamp") ? next : null;
+  if (markerStamp) next = markerStamp.nextElementSibling;
+  const anchor = marker && next !== div ? marker : null;
+  const ownStamp = div.querySelector(":scope > .chatgpt-timestamp");
+  // The stamp already in the right place comes first.
+  const stamps = anchor ? [markerStamp, ownStamp] : [ownStamp, markerStamp];
+  return { anchor, stamps: stamps.filter(Boolean) };
+}
+
 function addChatTimestamps() {
   const { chatTimestampEnabled, chatTimestampPosition, dateFormat } =
     userSettings;
@@ -1140,20 +1152,21 @@ function addChatTimestamps() {
     ? getMessageElements().map(element => ({ element }))
     : getMessageRecords();
   records.forEach(({ element: div, message, turnIndex }) => {
-    let timestampEl = div.querySelector(":scope > .chatgpt-timestamp");
+    const { anchor, stamps } = locateChatStamp(div);
 
     // If chat timestamps are disabled, remove any existing ones and clear marker.
     if (!chatTimestampEnabled || isGroupChat) {
       div
         .querySelectorAll(".chatgpt-timestamp")
         .forEach((el) => el.remove());
+      stamps.forEach((el) => el.remove());
       delete div.dataset.timestampAdded;
       return;
     }
 
     const date = parseTimestamp(message?.create_time);
     if (!date) {
-      timestampEl?.remove();
+      stamps.forEach((el) => el.remove());
       delete div.dataset.timestampAdded;
       return;
     }
@@ -1164,16 +1177,24 @@ function addChatTimestamps() {
     // Double-check that chat timestamps are still enabled before adding.
     if (!userSettings.chatTimestampEnabled) return;
 
-    const indexText = turnIndex == null ? "" : `#${turnIndex}`;
-    const state = [indexText, formatted, timestampColor, chatBold, justifyContent]
-      .join("|");
-    if (timestampEl && renderedState.get(timestampEl) === state) return;
-
+    let [timestampEl, ...extraStamps] = stamps;
+    extraStamps.forEach((el) => el.remove());
     if (!timestampEl) {
       timestampEl = document.createElement("span");
       timestampEl.className = "chatgpt-timestamp";
+    }
+    // The "Worked for" block can appear after the stamp, so placement is
+    // checked even when nothing else changed.
+    if (anchor) {
+      if (anchor.nextElementSibling !== timestampEl) anchor.after(timestampEl);
+    } else if (timestampEl.parentElement !== div) {
       div.insertBefore(timestampEl, div.firstChild);
     }
+
+    const indexText = turnIndex == null ? "" : `#${turnIndex}`;
+    const state = [indexText, formatted, timestampColor, chatBold, justifyContent]
+      .join("|");
+    if (renderedState.get(timestampEl) === state) return;
 
     let indexEl = timestampEl.querySelector(":scope > .chatgpt-turn-index");
     let timeEl = timestampEl.querySelector(":scope > .chatgpt-turn-time");

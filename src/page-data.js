@@ -10,6 +10,8 @@ const SIDEBAR_SELECTOR =
 const SPACES_ROW_SELECTOR =
   'section[data-app-action-sidebar-section] [data-appearance] [role="button"]' +
   ':not([data-app-action-sidebar-project-row])';
+// Chats opened earlier in the session stay mounted, hidden, in inactive pages.
+const INACTIVE_PAGE_SELECTOR = '[data-app-shell-active-page="false"]';
 
 function parseTimestamp(value) {
   if (Object.prototype.toString.call(value) === "[object Date]") {
@@ -68,7 +70,19 @@ function findData(root, predicate) {
 function getMessageElements() {
   const elements = Array.from(document.querySelectorAll(`main ${MESSAGE_SELECTOR.split(", ").join(", main ")}`));
   // Some layouts attach both selectors to nested wrappers for the same message.
-  return elements.filter((element) => !element.parentElement?.closest(MESSAGE_SELECTOR));
+  return elements.filter((element) => !element.parentElement?.closest(MESSAGE_SELECTOR) &&
+    !element.closest(INACTIVE_PAGE_SELECTOR));
+}
+
+// Each turn has a hidden marker where the assistant's part starts. Returns it
+// when `element` is the first message after it.
+function getAgentTurnStart(element) {
+  const turn = element.closest("[data-turn-key]");
+  const marker = turn?.querySelector("[data-chatgpt-agent-turn-start]");
+  if (!marker) return null;
+  const first = Array.from(turn.querySelectorAll(MESSAGE_SELECTOR)).find((message) =>
+    marker.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return first === element ? marker : null;
 }
 
 function itemMessageIds(item) {
