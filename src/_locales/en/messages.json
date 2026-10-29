@@ -165,7 +165,7 @@
     "message": "Bookmarked only"
   },
   "starFilterHint": {
-    "message": "Controls which chats stay visible in the ChatGPT sidebar."
+    "message": "Bookmarked only shows your bookmarks in place of Recents in the ChatGPT sidebar."
   },
   "starChatCreating": {
     "message": "This chat is still being created — try again in a moment"

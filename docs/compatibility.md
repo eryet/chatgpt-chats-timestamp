@@ -15,9 +15,11 @@ The September 2026 page inspected during this repair uses:
 
 `src/page-data.js` owns selectors, React data lookup, date normalization, and theme detection. It also supports the older message IDs, sidebar links, and project links. Match message and conversation IDs before using data from an ancestor: a turn can contain reasoning and multiple messages with different creation dates.
 
-Spaces sidebar rows (spaces, pages, and sites) have no ID or href to match. `getSpacesRowMetadata` stops the fiber walk at the list that holds the row instead, because props above it are shared by every row ([info.md](info.md#october-2026-spaces-sidebar)). These rows can't be bookmarked, and the sidebar filter never hides them.
+Spaces sidebar rows (spaces, pages, and sites) have no ID or href to match. `getSpacesRowMetadata` stops the fiber walk at the list that holds the row instead, because props above it are shared by every row ([info.md](info.md#october-2026-spaces-sidebar)). These rows can't be bookmarked, and the sidebar filter leaves the Spaces sidebar alone.
 
 Chats opened earlier in the session stay mounted in hidden pages (`[data-app-shell-active-page="false"]`). `getMessageElements` skips them, so numbering, stamps, and export only see the open chat. A reply with a "Worked for" block is stamped at the turn's `[data-chatgpt-agent-turn-start]` marker, above the block ([info.md](info.md#october-2026-cached-chat-pages)).
+
+With the bookmark filter on, the chat Recents section (`[data-sidebar-project-container-id="chats"]`) is hidden as a whole and the extension's own Bookmarks section takes its place. Hiding the section stops ChatGPT loading older chats into it. No ChatGPT row is hidden one by one, and `getSidebarLinks` leaves the Bookmarks section's links out ([info.md](info.md#bookmarks-section)).
 
 The live React diagnostic confirmed sidebar `conversation` data at ancestor 27
 (the old code stopped at 25), and project data under `project.gizmo`. Message

@@ -24,7 +24,7 @@ Every chat in the sidebar shows when it was created. Hover a chat to see when it
 - **Classic**: the other time appears below
 - **Disabled**: no hover change
 
-Spaces, pages, and sites in the Spaces sidebar get timestamps too. They can't be bookmarked, so **Sidebar Filter** never hides them.
+Spaces, pages, and sites in the Spaces sidebar get timestamps too. They can't be bookmarked, and **Sidebar Filter** leaves the Spaces sidebar as it is.
 
 ### 💬 Message timestamps
 
@@ -37,7 +37,7 @@ Each message shows its turn number and the time it was sent, like `#4 10/1/2026 
 - Add a note of up to 500 characters to remember why a chat matters.
 - Search across titles and notes.
 - Hover a bookmark to delete it, or remove every bookmark in a view at once.
-- Use **Sidebar Filter** to show only bookmarked chats in the ChatGPT sidebar.
+- Set **Sidebar Filter** to **Bookmarked only** to show a Bookmarks section in place of Recents in the ChatGPT sidebar. Pinned chats and projects stay as they are.
 
 Bookmarks are saved to Chrome sync storage. If Chrome sync is on, they follow you to your other computers. You can keep up to 250 bookmarks and 30 folders, and the popup shows how many you've used.
 

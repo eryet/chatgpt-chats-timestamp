@@ -165,7 +165,7 @@
     "message": "僅顯示書籤"
   },
   "starFilterHint": {
-    "message": "決定 ChatGPT 側邊欄要顯示哪些聊天。"
+    "message": "選擇「僅顯示書籤」時，ChatGPT 側邊欄的近期聊天會改為顯示你的書籤。"
   },
   "starChatCreating": {
     "message": "這個對話仍在建立中，請稍後再試"

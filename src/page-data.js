@@ -10,6 +10,10 @@ const SIDEBAR_SELECTOR =
 const SPACES_ROW_SELECTOR =
   'section[data-app-action-sidebar-section] [data-appearance] [role="button"]' +
   ':not([data-app-action-sidebar-project-row])';
+// The chat sidebar's Recents section in any UI language. The Spaces sidebar
+// has a Recents section too, without this wrapper.
+const CHAT_RECENTS_SELECTOR =
+  '[data-sidebar-project-container-id="chats"] > section[data-app-action-sidebar-section]';
 // Chats opened earlier in the session stay mounted, hidden, in inactive pages.
 const INACTIVE_PAGE_SELECTOR = '[data-app-shell-active-page="false"]';
 

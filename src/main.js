@@ -5,6 +5,8 @@ const defaultI18n = {
   exportExtractFailed: "Could not extract message content",
   exportFailedTemplate: "Export failed: {{error}}",
   untitledChat: "Untitled Chat",
+  sidebarBookmarksHeading: "Bookmarks",
+  sidebarBookmarksEmpty: "No bookmarks yet",
   exportCreatedLabel: "Created",
   exportRoleYou: "You",
   exportRoleChatgpt: "ChatGPT",
@@ -31,6 +33,8 @@ let userSettings = {
   boldSidebarTimestamp: false,
   boldChatTimestamp: true,
   starredIds: new Set(),
+  // [{ id, kind, title, starredAt }] from the bridge
+  bookmarks: [],
   ...defaultTimestampColors,
 };
 
@@ -150,6 +154,12 @@ function resolveConversationId(id) {
 // project folders (/g/g-p-.../project), and group chats (/gg/...)
 const SIDEBAR_LINK_SELECTOR = SIDEBAR_SELECTOR;
 
+// ChatGPT's own sidebar links, leaving out the extension's Bookmarks section.
+function getSidebarLinks() {
+  return Array.from(document.querySelectorAll(SIDEBAR_LINK_SELECTOR))
+    .filter((link) => !bookmarksSection.contains(link));
+}
+
 // Group chats (/gg/...) and dots (/dots/...) are messaging rooms that show
 // their own message times; their messages carry no conversation message data.
 function isGroupChatPath(pathname) {
@@ -236,8 +246,7 @@ function findFirstTitleText(el) {
 // for freshly created chats (null / "New chat"); the DOM shows the real one.
 function getSidebarTitleForConversationId(conversationId) {
   if (!conversationId) return null;
-  const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
-  for (const el of links) {
+  for (const el of getSidebarLinks()) {
     const linkId = resolveConversationId(
       getConversationIdFromHref(el.getAttribute("href")),
     );
@@ -357,6 +366,7 @@ window.addEventListener("message", (event) => {
   if (event.data?.type === "TIMESTAMP_SETTINGS_UPDATE") {
     userSettings = { ...userSettings, ...event.data.settings };
     userSettings.starredIds = normalizeStarredIdSet(userSettings.starredIds);
+    if (!Array.isArray(userSettings.bookmarks)) userSettings.bookmarks = [];
     if (event.data?.i18n) {
       const nextI18n = { ...defaultI18n };
       Object.entries(event.data.i18n).forEach(([key, value]) => {
@@ -432,7 +442,7 @@ function exportCurrentChat(format = "markdown") {
         userI18n.untitledChat;
     } else {
       // Select both regular chat links and project chat links
-      const sidebarLinks = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
+      const sidebarLinks = getSidebarLinks();
       const currentPath = window.location.pathname;
       // Match on resolved ids too: for freshly created chats the sidebar
       // href can still hold the WEB: draft id while the URL has the real id.
@@ -794,8 +804,12 @@ function setHoverExpanded(el, expanded) {
 function addSidebarTimestampsFiber() {
   const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
-  const links = document.querySelectorAll(SIDEBAR_LINK_SELECTOR);
+  const links = getSidebarLinks();
   const { hoverMode, sidebarFilterMode } = userSettings;
+  const recents = document.querySelector(CHAT_RECENTS_SELECTOR);
+  const showBookmarks = sidebarFilterMode === "starred" && Boolean(recents);
+  // Bookmarked chat id -> title and dates, for the Bookmarks section.
+  const knownChats = new Map();
 
   const style = {
     primaryColor: getSettingColor(
@@ -826,14 +840,6 @@ function addSidebarTimestampsFiber() {
       room?.id || getConversationIdFromHref(link.getAttribute("href")),
     );
     const isStarred = Boolean(conversationId && starredIds.has(conversationId));
-    const row = {
-      el,
-      display:
-        conversationId && sidebarFilterMode === "starred" && !isStarred
-          ? "none"
-          : "",
-    };
-    rows.push(row);
 
     // Get timestamps from conversation, gizmo, or group chat room
     let createdText, updatedText;
@@ -846,10 +852,20 @@ function addSidebarTimestampsFiber() {
       updatedText = formatTimestamp(readSignal(room, "updatedAt$"));
       createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
     }
-    if (!createdText) return;
+    if (showBookmarks && isStarred) {
+      knownChats.set(conversationId, {
+        // Fiber titles lag for new chats; the rendered title doesn't.
+        title: findFirstTitleText(link) || conversation?.title,
+        createdText,
+        updatedText,
+      });
+    }
+    // Recents is hidden while the Bookmarks section stands in for it.
+    if (!createdText || (showBookmarks && recents.contains(link))) return;
 
+    const row = { el, isStarred };
+    rows.push(row);
     setSidebarRowText(row, createdText, updatedText);
-    row.isStarred = isStarred;
 
     // Project chats have ps-9 class which adds extra left padding (36px).
     // Project folders have an icon, so use same offset.
@@ -864,9 +880,9 @@ function addSidebarTimestampsFiber() {
       isProjectChat || isProjectFolder || hasLeadingIcon ? "36px" : "10px";
   });
 
-  // Spaces, pages and sites aren't chats: they can't be bookmarked and the
-  // bookmark filter never hides them. Every row has an icon before its title
-  // (an emoji icon is text, so it can't be measured like pinned chats).
+  // Spaces, pages and sites aren't chats: they can't be bookmarked, and the
+  // Spaces sidebar has no Bookmarks section. Every row has an icon before its
+  // title (an emoji icon is text, so it can't be measured like pinned chats).
   document.querySelectorAll(SPACES_ROW_SELECTOR).forEach((el) => {
     const record = getSpacesRowMetadata(el);
     const createdText = formatTimestamp(record?.create_time);
@@ -876,24 +892,144 @@ function addSidebarTimestampsFiber() {
     rows.push(row);
   });
 
-  rows.forEach((row) => {
-    if (row.display !== undefined && row.el.style.display !== row.display) {
-      row.el.style.display = row.display;
-    }
-    if (row.primaryText) renderSidebarTimestamp(row, style);
-  });
+  rows.push(...updateBookmarksSection(showBookmarks, recents, knownChats));
+  rows.forEach((row) => renderSidebarTimestamp(row, style));
 
   // Titles only settle once the writes above make rows height: auto, so new
   // rows are measured afterwards (one layout for the batch) and re-anchored
   // before the browser paints.
-  const unmeasured = rows.filter(
-    (row) =>
-      row.primaryText && row.display !== "none" && !sidebarStampLayout.has(row.el),
-  );
+  const unmeasured = rows.filter((row) => !sidebarStampLayout.has(row.el));
   unmeasured.forEach((row) => measureSidebarStamp(row.el));
   unmeasured.forEach((row) => {
     if (sidebarStampLayout.has(row.el)) renderSidebarTimestamp(row, style);
   });
+}
+
+// With the bookmark filter on, this section takes the place of ChatGPT's
+// Recents. Hiding Recents as a whole, rather than its unbookmarked rows, also
+// stops ChatGPT loading older chats into it.
+const bookmarksSection = document.createElement("section");
+bookmarksSection.addEventListener("click", openBookmarkInPlace);
+// Bookmark id -> its row in the section.
+const bookmarkRows = new Map();
+// Class names read from ChatGPT's sidebar, so the section matches it.
+let bookmarksTemplate = null;
+
+// Returns the rows that have dates to stamp.
+function updateBookmarksSection(show, recents, knownChats) {
+  bookmarksTemplate ||= readBookmarksTemplate(recents);
+  if (!show || !bookmarksTemplate) {
+    if (bookmarksSection.isConnected) bookmarksSection.remove();
+    if (recents?.style.display === "none") recents.style.display = "";
+    return [];
+  }
+  if (recents.previousElementSibling !== bookmarksSection) {
+    recents.before(bookmarksSection);
+  }
+  if (recents.style.display !== "none") recents.style.display = "none";
+
+  const currentId = resolveConversationId(
+    getConversationIdFromHref(window.location.href),
+  );
+  const items = [...userSettings.bookmarks]
+    .sort((a, b) => (b.starredAt || "").localeCompare(a.starredAt || ""))
+    .map((bookmark) => {
+      const known = knownChats.get(bookmark.id);
+      return {
+        id: bookmark.id,
+        href: `/${bookmark.kind === "group" ? "gg" : "c"}/${encodeURIComponent(bookmark.id)}`,
+        title: known?.title || bookmark.title || userI18n.untitledChat,
+        active: bookmark.id === currentId,
+        createdText: known?.createdText,
+        updatedText: known?.updatedText,
+      };
+    });
+  const state = JSON.stringify([
+    userI18n.sidebarBookmarksHeading,
+    userI18n.sidebarBookmarksEmpty,
+    items,
+  ]);
+  if (renderedState.get(bookmarksSection) !== state) {
+    buildBookmarksSection(items);
+    renderedState.set(bookmarksSection, state);
+  }
+
+  return items
+    .filter((item) => item.createdText)
+    .map((item) => {
+      const row = { el: bookmarkRows.get(item.id), isStarred: false, leftOffset: "10px" };
+      setSidebarRowText(row, item.createdText, item.updatedText);
+      return row;
+    });
+}
+
+// Recents' heading and list, and the element path from a chat row down to
+// its link. Recents keeps its heading while collapsed, but not its rows.
+function readBookmarksTemplate(recents) {
+  const heading = recents?.firstElementChild?.firstElementChild;
+  const list = recents?.querySelector("[data-appearance]");
+  const link =
+    recents?.querySelector("a[data-interactive-row-link]") ||
+    getSidebarLinks().find((el) => el.hasAttribute("data-interactive-row-link"));
+  const row = link?.closest(".sidebar-item");
+  if (!heading?.firstElementChild || !list || !row) return null;
+  const rowPath = [];
+  for (let node = link; node !== row.parentElement; node = node.parentElement) {
+    rowPath.unshift({ tag: node.tagName, className: node.className });
+  }
+  return {
+    section: recents.className,
+    navSection: recents.firstElementChild.className,
+    heading: heading.className,
+    headingText: heading.firstElementChild.className,
+    list: list.className,
+    rowPath,
+  };
+}
+
+function buildBookmarksSection(items) {
+  const template = bookmarksTemplate;
+  const shell = (tag, className) =>
+    Object.assign(document.createElement(tag), { className });
+  const headingRow = (text) => {
+    const row = shell("div", template.heading);
+    row.append(Object.assign(shell("div", template.headingText), { textContent: text }));
+    return row;
+  };
+
+  const list = shell("div", template.list);
+  bookmarkRows.clear();
+  for (const item of items) {
+    const path = template.rowPath.map(({ tag, className }) => shell(tag, className));
+    path.reduce((parent, child) => parent.appendChild(child));
+    const row = path[0];
+    const link = path[path.length - 1];
+    link.setAttribute("href", item.href);
+    link.append(Object.assign(shell("span", "truncate"), { textContent: item.title }));
+    // ChatGPT's row classes highlight a selected thread.
+    if (item.active) row.setAttribute("data-app-action-sidebar-thread-selected", "true");
+    list.append(row);
+    bookmarkRows.set(item.id, row);
+  }
+  if (!items.length) list.append(headingRow(userI18n.sidebarBookmarksEmpty));
+
+  const navSection = shell("div", template.navSection);
+  navSection.append(headingRow(userI18n.sidebarBookmarksHeading), list);
+  bookmarksSection.className = template.section;
+  bookmarksSection.replaceChildren(navSection);
+}
+
+// Open a bookmark without reloading the page, the way ChatGPT's links do.
+// Modified clicks keep the browser's behavior (new tab, new window).
+function openBookmarkInPlace(event) {
+  const link = event.target.closest("a[href]");
+  const router = window.__reactRouterDataRouter;
+  if (!link || typeof router?.navigate !== "function") return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+  event.preventDefault();
+  router.navigate(link.getAttribute("href"));
 }
 
 function setSidebarRowText(row, createdText, updatedText) {

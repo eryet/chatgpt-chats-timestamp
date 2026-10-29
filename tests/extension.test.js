@@ -328,7 +328,7 @@ test("response observer ignores unrelated endpoints and preserves rejected reque
   failure.close();
 });
 
-test("bookmark filtering hides whole new sidebar rows and preserves project controls", () => {
+test("bookmarked rows get a star badge and the filter never hides ChatGPT's rows", () => {
   const window = modernPage();
   const doc = window.document;
   const other = doc.createElement("div");
@@ -337,15 +337,101 @@ test("bookmark filtering hides whole new sidebar rows and preserves project cont
   doc.body.prepend(other);
   window.eval('userSettings.starredIds = ["chat-1"]; userSettings.sidebarFilterMode = "starred"');
   window.addSidebarTimestampsFiber();
-  assert.equal(other.style.display, "none");
+  assert.equal(other.style.display, "");
   const current = doc.querySelector('a[href="/c/chat-1"]').closest(".sidebar-item");
-  assert.equal(current.style.display, "");
   assert.equal(current.querySelector(".timestamp-star").style.display, "flex");
   assert.equal(doc.querySelector("[data-app-action-sidebar-project-row]").style.display, "");
   window.eval('userSettings.sidebarFilterMode = "all"; userSettings.starredIds = []');
   window.addSidebarTimestampsFiber();
-  assert.equal(other.style.display, "");
   assert.equal(current.querySelector(".timestamp-star").style.display, "none");
+  window.close();
+});
+
+// Live October layout: Recents sits in the "chats" project container, its rows
+// in wrappers; Pinned rows are not wrapped.
+function bookmarksPage() {
+  const recentsRow = (id, title) => `<div data-sidebar-chatgpt-conversation-key="${id}"><div><div>
+    <div class="sidebar-item row-class"><div class="trigger-class">
+      <a class="link-class" data-interactive-row-link href="/c/${id}"><span data-thread-title>${title}</span></a>
+    </div></div>
+  </div></div></div>`;
+  const section = (container, heading, rows) => `<div data-sidebar-project-container-id="${container}">
+    <section data-app-action-sidebar-section class="section-class"><div class="nav-section-class">
+      <div class="heading-class"><div class="heading-text-class"><button>${heading}</button></div></div>
+      <div data-appearance class="list-class"><div>${rows}</div></div>
+    </div></section></div>`;
+  const window = setup(`<nav>
+    ${section("pinned", "Pinned", '<div class="sidebar-item"><a data-interactive-row-link href="/c/pinned-1">Pinned chat</a></div>')}
+    ${section("chats", "Recents", recentsRow("chat-1", "Live title") + recentsRow("other", "Other chat"))}
+  </nav><main></main>`);
+  attach(window.document.querySelector('a[href="/c/chat-1"]'), {}, { conversation: {
+    id: "chat-1", title: "Stale fiber title", create_time: 1790683200, update_time: 1790683205,
+  } });
+  window.eval(`userSettings.sidebarFilterMode = "starred";
+    userSettings.starredIds = ["chat-1", "old-chat", "room-1"];
+    userSettings.bookmarks = [
+      { id: "old-chat", kind: "chat", title: "Old chat", starredAt: "2026-01-01T00:00:00Z" },
+      { id: "chat-1", kind: "chat", title: "Snapshot title", starredAt: "2026-10-01T00:00:00Z" },
+      { id: "room-1", kind: "group", title: "", starredAt: "2026-05-01T00:00:00Z" },
+    ];`);
+  return window;
+}
+
+test("bookmark filter shows a Bookmarks section in place of Recents", async () => {
+  const window = bookmarksPage();
+  const doc = window.document;
+  window.addSidebarTimestampsFiber();
+  const recents = doc.querySelector(window.eval("CHAT_RECENTS_SELECTOR"));
+  const section = recents.previousElementSibling;
+  assert.equal(section.hasAttribute("data-app-action-sidebar-section"), false);
+  // Recents is hidden as a whole, so ChatGPT stops loading older chats into it.
+  assert.equal(recents.style.display, "none");
+  assert.equal(recents.querySelector(".timestamp-stack-container"), null);
+  assert.equal(section.className, "section-class");
+  assert.equal(section.querySelector(".heading-text-class").textContent, "Bookmarks");
+  const links = [...section.querySelectorAll("a")];
+  assert.deepEqual(links.map(a => a.getAttribute("href")), ["/c/chat-1", "/gg/room-1", "/c/old-chat"]);
+  // Loaded chats show their current title; others the title saved with the bookmark.
+  assert.deepEqual(links.map(a => a.textContent), ["Live title", "Untitled Chat", "Old chat"]);
+  // Rows copy ChatGPT's classes but not its markers, so they aren't read as ChatGPT rows.
+  assert.equal(links[0].className, "link-class");
+  assert.equal(links[0].hasAttribute("data-interactive-row-link"), false);
+  const rows = links.map(a => a.closest(".sidebar-item"));
+  assert.equal(rows[0].getAttribute("data-app-action-sidebar-thread-selected"), "true");
+  assert.equal(rows[2].hasAttribute("data-app-action-sidebar-thread-selected"), false);
+  // Only chats ChatGPT has loaded have dates to show.
+  assert.ok(rows[0].querySelector(":scope > .timestamp-stack-container"));
+  assert.equal(rows[2].querySelector(".timestamp-stack-container"), null);
+  assert.equal(doc.querySelector('a[href="/c/pinned-1"]').closest(".sidebar-item").style.display, "");
+
+  const records = [];
+  const observer = new window.MutationObserver(list => records.push(...list));
+  observer.observe(doc.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  window.addSidebarTimestampsFiber();
+  await tick();
+  observer.disconnect();
+  assert.equal(records.length, 0);
+
+  // Plain clicks open the chat in place; modified clicks are left to the browser.
+  const navigated = [];
+  window.__reactRouterDataRouter = { navigate: href => navigated.push(href) };
+  const prevented = [];
+  doc.addEventListener("click", event => { prevented.push(event.defaultPrevented); event.preventDefault(); });
+  links[2].firstChild.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  links[1].dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true }));
+  assert.deepEqual(prevented, [true, false]);
+  assert.deepEqual(navigated, ["/c/old-chat"]);
+
+  window.eval("userSettings.bookmarks = []");
+  window.addSidebarTimestampsFiber();
+  assert.equal(section.querySelector("a"), null);
+  assert.match(section.textContent, /No bookmarks yet/);
+
+  window.eval('userSettings.sidebarFilterMode = "all"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(section.isConnected, false);
+  assert.equal(recents.style.display, "");
+  assert.ok(recents.querySelector(".timestamp-stack-container"));
   window.close();
 });
 

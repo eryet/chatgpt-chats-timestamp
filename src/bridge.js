@@ -30,6 +30,8 @@ const i18nTemplates = {
   exportExtractFailed: chrome.i18n.getMessage("exportExtractFailed"),
   exportFailedTemplate: chrome.i18n.getMessage("exportFailedTemplate"),
   untitledChat: chrome.i18n.getMessage("untitledChat"),
+  sidebarBookmarksHeading: chrome.i18n.getMessage("tabBookmarks"),
+  sidebarBookmarksEmpty: chrome.i18n.getMessage("bmEmptyStateTitle"),
   exportCreatedLabel: chrome.i18n.getMessage("exportCreatedLabel"),
   exportRoleYou: chrome.i18n.getMessage("exportRoleYou"),
   exportRoleChatgpt: chrome.i18n.getMessage("exportRoleChatgpt"),
@@ -41,11 +43,11 @@ const i18nTemplates = {
 
 const requestTimedOutMessage = chrome.i18n.getMessage("requestTimedOut");
 
-function sendSettingsToPage(settings, starredIds) {
+function sendSettingsToPage(settings, starredIds, bookmarks) {
   window.postMessage(
     {
       type: "TIMESTAMP_SETTINGS_UPDATE",
-      settings: { ...settings, starredIds },
+      settings: { ...settings, starredIds, bookmarks },
       i18n: i18nTemplates,
     },
     window.location.origin,
@@ -64,6 +66,25 @@ function extractStarredIds(allStorage) {
     }
   }
   return ids;
+}
+
+// Only what the sidebar's Bookmarks section shows; notes and folders stay out
+// of the page.
+function extractBookmarks(allStorage) {
+  const bookmarks = [];
+  for (const key in allStorage) {
+    const item = allStorage[key];
+    if (!key.startsWith(BOOKMARK_KEY_PREFIX) || !item || typeof item !== "object") {
+      continue;
+    }
+    bookmarks.push({
+      id: key.slice(BOOKMARK_KEY_PREFIX.length),
+      kind: item.kind === "group" ? "group" : "chat",
+      title: typeof item.titleSnapshot === "string" ? item.titleSnapshot : "",
+      starredAt: typeof item.starredAt === "string" ? item.starredAt : "",
+    });
+  }
+  return bookmarks;
 }
 
 // Migrate old hoverEnabled boolean to new hoverMode string
@@ -139,7 +160,7 @@ function readAndDispatch() {
       const withDefaults = { ...defaultSettings, ...result };
       migrateHoverEnabled(withDefaults);
       const starredIds = extractStarredIds(result);
-      sendSettingsToPage(withDefaults, starredIds);
+      sendSettingsToPage(withDefaults, starredIds, extractBookmarks(result));
     });
   });
 }

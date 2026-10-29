@@ -32,6 +32,40 @@ The reply's stamp goes right after the marker, so it sits above the block the
 way the user's stamp sits above their message. Without a block, the stamp stays
 inside the reply.
 
+### Bookmarks section
+
+The chat sidebar's sections sit in wrappers marked
+`data-sidebar-project-container-id`: `"pinned"` for Pinned and `"chats"` for
+Recents. The section headings are translated, and the Spaces sidebar also has a
+Recents section without this wrapper, so the wrapper is how the chat Recents
+section is found.
+
+The bookmark filter used to hide unbookmarked rows one by one. That stopped
+working well:
+
+- Each Recents row now sits inside a `div[data-sidebar-chatgpt-conversation-key]`
+  wrapper that draws a 1px separator. Hiding the row left the wrapper, so 300
+  hidden chats made a 300px blank band.
+- ChatGPT loads the next page of Recents when the end of the list is in view.
+  With most rows hidden, the end stays in view, so it loaded the whole history,
+  and each new page showed unfiltered until the next refresh.
+
+With the filter on, the extension now hides the whole Recents section and adds
+its own Bookmarks section in its place. A hidden list never comes into view, so
+ChatGPT stops loading older chats. Pinned and project rows are never hidden.
+
+- The section and its rows reuse class names read from Recents and a chat row,
+  so they match ChatGPT's look and theme. They copy no attributes, so the
+  extension's sidebar selectors never treat them as ChatGPT rows.
+- Rows come from saved bookmarks (id, kind, title, date bookmarked). A chat
+  ChatGPT has loaded shows its current title and dates. Others show the title
+  saved with the bookmark and no dates; the extension doesn't fetch them.
+- The open chat's row sets `data-app-action-sidebar-thread-selected="true"`,
+  which ChatGPT's row classes highlight.
+- A plain click calls `window.__reactRouterDataRouter.navigate()`, so the chat
+  opens without a page reload. Modified clicks (new tab, new window) are left to
+  the browser. A `/c/<id>` link to a project chat redirects to the project URL.
+
 ## October 2026 Spaces sidebar
 
 Inspected on 2026-10-13 on `/spaces/<space id>` with console diagnostics of
