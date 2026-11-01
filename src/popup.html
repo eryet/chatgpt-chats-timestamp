@@ -1775,6 +1775,7 @@
           >Hover Mode</label
         >
         <select id="hoverMode">
+          <option value="inline" data-i18n="optionHoverInline">Compact inline (hover details)</option>
           <option value="swap" data-i18n="optionHoverSwap">
             Swap (slide effect)
           </option>
@@ -1794,6 +1795,36 @@
         </div>
       </div>
 
+      <div id="inlineSettings">
+        <div class="setting-group">
+          <label class="setting-label" for="hoverDetailSource" data-i18n="labelHoverDetailSource">Hover time source</label>
+          <select id="hoverDetailSource">
+            <option value="created" data-i18n="optionDisplayCreated">Created time</option>
+            <option value="updated" data-i18n="optionDisplayUpdated">Updated time</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label" for="inlineDateFormat" data-i18n="labelInlineDateFormat">Default sidebar format</label>
+          <select id="inlineDateFormat">
+            <option value="date" data-i18n="optionInlineDate">Date only (11/01)</option>
+            <option value="fullDate" data-i18n="optionInlineFullDate">Full date (2026/11/01)</option>
+            <option value="time" data-i18n="optionInlineTime">Time only (13:13)</option>
+            <option value="datetime" data-i18n="optionInlineDateTime">Date + time (2026/11/01 13:13)</option>
+            <option value="inherit" data-i18n="optionInlineInherit">Use existing date format</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label" for="hoverDetailFormat" data-i18n="labelHoverDetailFormat">Hover detail format</label>
+          <select id="hoverDetailFormat">
+            <option value="date" data-i18n="optionInlineDate">Date only (11/01)</option>
+            <option value="fullDate" data-i18n="optionInlineFullDate">Full date (2026/11/01)</option>
+            <option value="time" data-i18n="optionInlineTime">Time only (13:13)</option>
+            <option value="datetime" data-i18n="optionInlineDateTime">Date + time (2026/11/01 13:13)</option>
+            <option value="inherit" data-i18n="optionInlineInherit">Use existing date format</option>
+          </select>
+        </div>
+        <p class="setting-label" data-i18n="inlineHelp">Compact mode keeps the native row height. Display selects the default time source. Hover details have their own source and format. Updated means the conversation's last modification, not necessarily the last assistant reply.</p>
+      </div>
       <div class="setting-group">
         <div class="toggle-row">
           <span class="toggle-label" data-i18n="labelChatTimestampEnabled"

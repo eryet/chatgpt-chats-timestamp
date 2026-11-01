@@ -425,5 +425,35 @@
         "content": "$1"
       }
     }
+  },
+  "optionHoverInline": {
+    "message": "同行精簡（懸停詳情）"
+  },
+  "labelHoverDetailSource": {
+    "message": "懸停時間來源"
+  },
+  "labelInlineDateFormat": {
+    "message": "預設側邊欄格式"
+  },
+  "labelHoverDetailFormat": {
+    "message": "懸停詳情格式"
+  },
+  "optionInlineDate": {
+    "message": "僅日期（11/01）"
+  },
+  "optionInlineTime": {
+    "message": "僅時間（13:13）"
+  },
+  "optionInlineDateTime": {
+    "message": "日期＋時間（2026/11/01 13:13）"
+  },
+  "optionInlineInherit": {
+    "message": "使用既有日期格式"
+  },
+  "inlineHelp": {
+    "message": "精簡模式保持原生行高。Display 選擇預設時間來源；懸停詳情可獨立選擇來源與格式。更新時間是會話最後修改時間，不一定是助手最後回覆時間。"
+  },
+  "optionInlineFullDate": {
+    "message": "完整日期（2026/11/01）"
   }
 }
