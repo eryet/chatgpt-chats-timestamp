@@ -1,3 +1,6 @@
+const hoverDetailSourceSelect = document.getElementById("hoverDetailSource");
+const inlineDateFormatSelect = document.getElementById("inlineDateFormat");
+const hoverDetailFormatSelect = document.getElementById("hoverDetailFormat");
 const formatSelect = document.getElementById("dateFormat");
 const displayModeSelect = document.getElementById("displayMode");
 const hoverModeSelect = document.getElementById("hoverMode");
@@ -107,6 +110,9 @@ const defaultSettings = {
   dateFormat: "locale",
   displayMode: "created",
   hoverMode: "swap",
+  hoverDetailSource: "created",
+  inlineDateFormat: "date",
+  hoverDetailFormat: "fullDate",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
@@ -256,6 +262,7 @@ function updatePreview() {
   const displayMode = displayModeSelect.value;
   const hoverMode = hoverModeSelect.value;
   const hoverActive = hoverMode !== "disabled";
+  document.getElementById("inlineSettings").hidden = hoverMode !== "inline";
 
   const createdDate = new Date();
   createdDate.setDate(createdDate.getDate() - 5);
@@ -265,7 +272,11 @@ function updatePreview() {
   const createdText = formatDate(createdDate, format);
   const updatedText = formatDate(updatedDate, format);
 
-  if (displayMode === "updated") {
+  if (hoverMode === "inline") {
+    const dates = { created: createdDate, updated: updatedDate };
+    previewPrimary.textContent = formatCompactDate(dates[displayMode], inlineDateFormatSelect.value, format);
+    previewSecondary.textContent = t("previewHover", [formatCompactDate(dates[hoverDetailSourceSelect.value], hoverDetailFormatSelect.value, format)]);
+  } else if (displayMode === "updated") {
     previewPrimary.textContent = updatedText;
     previewSecondary.textContent = hoverActive
       ? t("previewHover", [createdText]) || `(hover: ${createdText})`
@@ -297,16 +308,20 @@ function updateAppearancePreview() {
   const createdText = formatDate(createdDate, format);
   const updatedText = formatDate(updatedDate, format);
   const chatText = `#4 ${updatedText}`;
+  const dates = { created: createdDate, updated: updatedDate };
+  const compact = hoverModeSelect.value === "inline";
+  const primaryText = compact ? formatCompactDate(dates[displayModeSelect.value], inlineDateFormatSelect.value, format) : createdText;
+  const secondaryText = compact ? formatCompactDate(dates[hoverDetailSourceSelect.value], hoverDetailFormatSelect.value, format) : updatedText;
 
   const sidebarWeight = boldSidebarCheckbox.checked ? "600" : "400";
   const chatWeight = boldChatCheckbox.checked ? "600" : "400";
 
   const samples = [
-    ["apLightSidebarPrimary", "colorSidebarPrimaryLight", createdText, sidebarWeight],
-    ["apLightSidebarSecondary", "colorSidebarSecondaryLight", updatedText, sidebarWeight],
+    ["apLightSidebarPrimary", "colorSidebarPrimaryLight", primaryText, sidebarWeight],
+    ["apLightSidebarSecondary", "colorSidebarSecondaryLight", secondaryText, sidebarWeight],
     ["apLightChat", "colorChatLight", chatText, chatWeight],
-    ["apDarkSidebarPrimary", "colorSidebarPrimaryDark", createdText, sidebarWeight],
-    ["apDarkSidebarSecondary", "colorSidebarSecondaryDark", updatedText, sidebarWeight],
+    ["apDarkSidebarPrimary", "colorSidebarPrimaryDark", primaryText, sidebarWeight],
+    ["apDarkSidebarSecondary", "colorSidebarSecondaryDark", secondaryText, sidebarWeight],
     ["apDarkChat", "colorChatDark", chatText, chatWeight],
   ];
   for (const [elId, colorKey, text, weight] of samples) {
@@ -336,6 +351,9 @@ function saveSettings() {
     dateFormat: formatSelect.value,
     displayMode: displayModeSelect.value,
     hoverMode: hoverModeSelect.value,
+    hoverDetailSource: hoverDetailSourceSelect.value,
+    inlineDateFormat: inlineDateFormatSelect.value,
+    hoverDetailFormat: hoverDetailFormatSelect.value,
     chatTimestampEnabled: chatTimestampCheckbox.checked,
     chatTimestampPosition: chatTimestampPositionSelect.value,
     sidebarFilterMode: sidebarFilterModeSelect.value,
@@ -350,6 +368,9 @@ function applySettings(settings) {
   formatSelect.value = settings.dateFormat;
   displayModeSelect.value = settings.displayMode;
   hoverModeSelect.value = settings.hoverMode;
+  hoverDetailSourceSelect.value = settings.hoverDetailSource;
+  inlineDateFormatSelect.value = settings.inlineDateFormat;
+  hoverDetailFormatSelect.value = settings.hoverDetailFormat;
   chatTimestampCheckbox.checked = settings.chatTimestampEnabled;
   chatTimestampPositionSelect.value = settings.chatTimestampPosition;
   sidebarFilterModeSelect.value = settings.sidebarFilterMode;
@@ -400,6 +421,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
   });
 });
+
+[hoverDetailSourceSelect, inlineDateFormatSelect, hoverDetailFormatSelect].forEach(el => el.addEventListener("change", saveSettings));
 
 // Save on change
 formatSelect.addEventListener("change", saveSettings);

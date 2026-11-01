@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="344" viewBox="0 0 960 344" role="img" aria-labelledby="title desc">
+  <title id="title">Compact inline timestamps: default and hover</title>
+  <desc id="desc">Illustration using synthetic titles and dates. Default shows a faint updated date. Hover shows a creation date in green, with the native actions immediately before it. Rows retain the same height.</desc>
+  <rect width="960" height="344" fill="#f5f5f5"/>
+  <g font-family="system-ui,sans-serif">
+    <text x="24" y="34" font-size="20" fill="#222">Default: last updated</text>
+    <text x="504" y="34" font-size="20" fill="#222">Hover: created date</text>
+    <rect x="16" y="52" width="448" height="210" rx="12" fill="#fafafa"/>
+    <rect x="496" y="52" width="448" height="210" rx="12" fill="#fafafa"/>
+    <g fill="#222" font-size="17">
+      <text x="36" y="92">Project planning</text>
+      <text x="36" y="138">Research notes</text>
+      <text x="36" y="184">Weekly summary</text>
+      <text x="516" y="92">Project planning</text>
+      <text x="516" y="184">Weekly summary</text>
+    </g>
+    <g fill="#aaa" font-size="12" text-anchor="end">
+      <text x="444" y="92">11/01</text>
+      <text x="444" y="138">10/31</text>
+      <text x="444" y="184">10/30</text>
+      <text x="924" y="92">11/01</text>
+      <text x="924" y="184">10/30</text>
+    </g>
+    <rect x="504" y="108" width="432" height="44" rx="9" fill="#ededed"/>
+    <text x="516" y="138" fill="#222" font-size="17">Research notes</text>
+    <g fill="#555"><circle cx="772" cy="131" r="1.8"/><circle cx="779" cy="131" r="1.8"/><circle cx="786" cy="131" r="1.8"/></g>
+    <path d="m810 123 7-6 4 4-3 3 4 6-3 3-6-4-3 3-2-2 3-3-1-4m4 10-5 6" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="924" y="138" fill="#33834a" font-size="12" text-anchor="end">2026/09/18</text>
+    <text x="24" y="292" font-size="14" fill="#555">Sources and formats are independent. Dates stay at the right; native actions sit just before them.</text>
+    <text x="24" y="322" font-size="12" fill="#777">Illustration only — synthetic conversation names and dates, not a live account screenshot.</text>
+  </g>
+</svg>

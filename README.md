@@ -23,8 +23,15 @@ Every chat in the sidebar shows when it was created. Hover a chat to see when it
 - **Swap**: the timestamp slides to the other time
 - **Classic**: the other time appears below
 - **Disabled**: no hover change
+- **Compact inline**: a faint date at the right of the native-height row; hover or focus shows configurable details. Native chat actions remain immediately to the left of the date.
 
-Spaces, pages, and sites in the Spaces sidebar get timestamps too. They can't be bookmarked, and **Sidebar Filter** leaves the Spaces sidebar as it is.
+Compact mode is opt-in; existing saved hover modes stay unchanged. **Display** selects the default time source, while **Hover time source** independently selects created or updated time. Both states have their own format: short date, full date, time, date + time, or the existing global format. For example, show the last-updated `11/01` normally and the creation date `2026/09/18` on hover. Built-in compact formats use local time, a 24-hour clock, and no seconds; “Use existing date format” preserves that format's behavior (including UTC for ISO).
+
+When the two sources differ, hover details use the theme-specific hover timestamp color from Appearance. The same source keeps the normal text color. Updated means the conversation's last modification; it is not guaranteed to be the last assistant reply. Missing dates stay blank.
+
+![Compact sidebar illustration with synthetic names and dates](docs/compact-sidebar.svg)
+
+Spaces, pages, and sites in the Spaces sidebar get timestamps too. They can't be bookmarked, and **Sidebar Filter** leaves the Spaces sidebar as it is. Compact mode leaves these rows and project folders native.
 
 ### 💬 Message timestamps
 
@@ -53,7 +60,8 @@ Pick your own colors for the sidebar timestamp, the hover timestamp, and the mes
 
 - **Date and time format:** system locale, ISO, US, EU, UK, relative ("2h ago"), short, date only, or time only
 - **Display:** created time or last updated time
-- **Hover mode:** Swap, Classic, or Disabled
+- **Hover mode:** Swap, Classic, Disabled, or Compact inline
+- **Compact sidebar:** independent default/hover time sources and formats
 - **Message timestamps:** on or off, and left, center, or right
 
 ### Also

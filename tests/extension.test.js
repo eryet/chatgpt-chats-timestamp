@@ -780,3 +780,136 @@ test("chat sidebar project rows in section lists are not treated as spaces rows"
   assert.equal(row.querySelector(".timestamp-primary").textContent, "2026-09-01 00:00:00");
   window.close();
 });
+
+test("compact mode keeps native layout, independent sources, no missing-date fallback, and switches cleanly", () => {
+  const window = modernPage();
+  const row = window.document.querySelector(".sidebar-item");
+  window.addSidebarTimestampsFiber(); // Enter through an existing legacy mode.
+  window.eval('Object.assign(userSettings, {hoverMode:"inline",displayMode:"created",hoverDetailSource:"updated",inlineDateFormat:"date",hoverDetailFormat:"time"})');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.style.height, "");
+  assert.equal(row.style.paddingBottom, "");
+  assert.equal(row.querySelector(".timestamp-stack-container"), null);
+  assert.equal(row.querySelector(".timestamp-inline-primary").textContent, window.formatCompactDate(1790683200, "date"));
+  assert.equal(row.querySelector(".timestamp-inline-secondary").textContent, window.formatCompactDate("2026-09-30T00:00:00Z", "time"));
+  // Project folders keep their native rows.
+  assert.equal(window.document.querySelector("[data-app-action-sidebar-project-row] .timestamp-stack-container"), null);
+  const observer = new window.MutationObserver(() => {});
+  observer.observe(row, {subtree:true, childList:true, attributes:true, characterData:true});
+  window.addSidebarTimestampsFiber();
+  assert.equal(observer.takeRecords().length, 0);
+  observer.disconnect();
+  window.eval('userSettings.displayMode="updated";userSettings.hoverDetailSource="created";userSettings.hoverDetailFormat="datetime"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-primary").textContent, window.formatCompactDate("2026-09-30T00:00:00Z", "date"));
+  assert.equal(row.querySelector(".timestamp-inline-secondary").textContent, window.formatCompactDate(1790683200, "datetime"));
+  attach(row.querySelector("a"), {conversation:{id:"chat-1",create_time:1790683200}});
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-primary").textContent, "");
+  window.eval('userSettings.hoverMode="classic"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-container"), null);
+  assert.ok(row.querySelector(".timestamp-stack-container"));
+  window.eval('userSettings.hoverMode="inline"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.style.height, "");
+  assert.equal(row.style.paddingBottom, "");
+  assert.equal(row.querySelectorAll(".timestamp-inline-container").length, 1);
+  window.close();
+});
+
+test("compact format uses local date, 24-hour minute precision and preserves existing formats", () => {
+  const window = modernPage();
+  const date = new Date(2026, 10, 1, 13, 7, 59);
+  assert.equal(window.formatCompactDate(date, "date"), "11/01");
+  assert.equal(window.formatCompactDate(date, "time"), "13:07");
+  assert.equal(window.formatCompactDate(date, "fullDate"), "2026/11/01");
+  assert.equal(window.formatCompactDate(date, "datetime"), "2026/11/01 13:07");
+  assert.equal(window.formatCompactDate(date, "inherit", "iso"), window.formatDate(date, "iso"));
+  for (const invalid of [undefined,null,"","invalid"]) assert.equal(window.formatCompactDate(invalid, "time"), "");
+  window.close();
+});
+
+test("compact mode accepts update-only metadata without inventing creation time", () => {
+  const window = modernPage();
+  const link = window.document.querySelector("a");
+  attach(link, {conversation:{id:"chat-1",update_time:"2026-09-30T00:00:00Z"}});
+  window.eval('userSettings.hoverMode="inline";userSettings.displayMode="updated";userSettings.hoverDetailSource="created"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(link.querySelector(".timestamp-inline-primary").textContent, window.formatCompactDate("2026-09-30T00:00:00Z","date"));
+  assert.equal(link.querySelector(".timestamp-inline-secondary").textContent, "");
+  window.close();
+});
+
+
+test("compact timestamps clear when a recycled row loses its metadata", () => {
+  const window = modernPage();
+  window.eval('userSettings.hoverMode="inline"');
+  window.addSidebarTimestampsFiber();
+  const row = window.document.querySelector(".sidebar-item");
+  assert.ok(row.querySelector(".timestamp-inline-container"));
+  attach(row.querySelector("a"), {});
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-container"), null);
+  assert.equal(row.style.getPropertyValue("--timestamp-inline-width"), "");
+  window.close();
+});
+
+
+test("compact hover hue follows independent sources and refreshes on theme or color changes", () => {
+  const window = modernPage();
+  // Equal rendered strings must not mask a change in the selected source.
+  attach(window.document.querySelector("a"), {conversation:{
+    id:"chat-1",create_time:"2026-11-01T00:00:00Z",update_time:"2026-11-01T00:00:00Z"
+  }});
+  window.eval('Object.assign(userSettings,{hoverMode:"inline",displayMode:"updated",hoverDetailSource:"created",inlineDateFormat:"date",hoverDetailFormat:"date"})');
+  window.addSidebarTimestampsFiber();
+  const detail = window.document.querySelector(".timestamp-inline-secondary");
+  assert.equal(detail.dataset.differentSource, "true");
+  assert.equal(detail.style.color, "rgb(21, 128, 61)");
+  window.document.documentElement.classList.add("dark");
+  window.addSidebarTimestampsFiber();
+  assert.equal(detail.style.color, "rgb(129, 201, 149)");
+  window.eval('userSettings.colorSidebarSecondaryDark="#6495ed"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(detail.style.color, "rgb(100, 149, 237)");
+  window.eval('userSettings.hoverDetailSource="updated"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(detail.dataset.differentSource, "false");
+  assert.equal(detail.style.color, "inherit");
+  window.eval('userSettings.displayMode="created"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(detail.dataset.differentSource, "true");
+  assert.equal(detail.style.color, "rgb(100, 149, 237)");
+  window.close();
+});
+
+
+test("compact widths are measured after all changed rows have been written", () => {
+  const window = modernPage();
+  const first = window.document.querySelector(".sidebar-item");
+  const second = first.cloneNode(true);
+  second.querySelector("a").setAttribute("href", "/c/chat-2");
+  first.after(second);
+  attach(second.querySelector("a"), {conversation:{
+    id:"chat-2",create_time:1790683200,update_time:"2026-09-30T00:00:00Z"
+  }});
+  window.eval('userSettings.hoverMode="inline"');
+  let reads = 0;
+  const original = window.HTMLElement.prototype.getBoundingClientRect;
+  window.HTMLElement.prototype.getBoundingClientRect = function () {
+    if (this.classList.contains("timestamp-inline-container")) {
+      reads++;
+      assert.equal(window.document.querySelectorAll(".timestamp-inline-container").length, 2);
+      return {width:52};
+    }
+    return original.call(this);
+  };
+  window.addSidebarTimestampsFiber();
+  assert.equal(reads, 2);
+  assert.equal(first.style.getPropertyValue("--timestamp-inline-width"), "52px");
+  assert.equal(second.style.getPropertyValue("--timestamp-inline-width"), "52px");
+  window.addSidebarTimestampsFiber();
+  assert.equal(reads, 2);
+  window.close();
+});
