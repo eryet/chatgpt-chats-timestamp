@@ -841,6 +841,51 @@ test("compact mode accepts update-only metadata without inventing creation time"
   window.close();
 });
 
+test("compact mode leaves rows native when neither selected source has a date", () => {
+  const window = modernPage();
+  const row = window.document.querySelector(".sidebar-item");
+  const link = row.querySelector("a");
+  attach(link, {conversation:{id:"chat-1",update_time:"2026-09-30T00:00:00Z"}});
+  window.eval('Object.assign(userSettings,{hoverMode:"inline",displayMode:"updated",hoverDetailSource:"created"})');
+  window.addSidebarTimestampsFiber();
+  assert.ok(row.hasAttribute("data-timestamp-inline-row"));
+  // Both sources now point at the missing creation time.
+  window.eval('userSettings.displayMode="created"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-container"), null);
+  assert.ok(!row.hasAttribute("data-timestamp-inline-row"));
+  window.close();
+});
+
+test("leaving compact mode clears stamps on rows the two-line modes skip", () => {
+  const window = modernPage();
+  const row = window.document.querySelector(".sidebar-item");
+  // Update-only chats get no two-line stamp, so the legacy path never visits them.
+  attach(row.querySelector("a"), {conversation:{id:"chat-1",update_time:"2026-09-30T00:00:00Z"}});
+  window.eval('Object.assign(userSettings,{hoverMode:"inline",displayMode:"updated"})');
+  window.addSidebarTimestampsFiber();
+  assert.ok(row.querySelector(".timestamp-inline-container"));
+  window.eval('userSettings.hoverMode="swap"');
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.querySelector(".timestamp-inline-container"), null);
+  assert.ok(!row.hasAttribute("data-timestamp-inline-row"));
+  assert.ok(!row.querySelector("[data-timestamp-inline-link]"));
+  window.close();
+});
+
+test("compact star follows the theme's star color", () => {
+  const window = modernPage();
+  window.eval('Object.assign(userSettings,{hoverMode:"inline",starredIds:["chat-1"]})');
+  window.addSidebarTimestampsFiber();
+  const star = window.document.querySelector(".timestamp-inline-star");
+  assert.equal(star.style.display, "");
+  assert.equal(star.style.color, "rgb(180, 83, 9)");
+  window.document.documentElement.classList.add("dark");
+  window.addSidebarTimestampsFiber();
+  assert.equal(star.style.color, "rgb(251, 191, 36)");
+  window.close();
+});
+
 
 test("compact timestamps clear when a recycled row loses its metadata", () => {
   const window = modernPage();

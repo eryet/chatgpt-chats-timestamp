@@ -814,6 +814,10 @@ function addSidebarTimestampsFiber() {
       const link = el.matches("a") ? el : el.querySelector('a[href*="/c/"],a[href*="/gg/"]');
       if (!getConversationIdFromHref(link?.getAttribute("href"))) { stamp.remove(); restoreNativeRow(el); }
     });
+  } else {
+    // Leaving compact mode: clear every compact stamp, including rows the
+    // two-line modes skip (update-only chats, project folders).
+    document.querySelectorAll("[data-timestamp-inline-row]").forEach(removeInlineTimestamp);
   }
   const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
@@ -866,7 +870,7 @@ function addSidebarTimestampsFiber() {
       dates.created = getGroupRoomCreatedAt(room);
       dates.updated = readSignal(room, "updatedAt$");
       updatedText = formatTimestamp(dates.updated);
-      createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
+      createdText = formatTimestamp(dates.created) || updatedText;
     }
     if (showBookmarks && isStarred) {
       knownChats.set(conversationId, {
@@ -883,8 +887,12 @@ function addSidebarTimestampsFiber() {
       return;
     }
     if (showBookmarks && recents.contains(link)) return;
-    // Keep project folders native in compact mode.
-    if (userSettings.hoverMode === "inline" && !getConversationIdFromHref(link.getAttribute("href"))) return;
+    // Keep project folders native in compact mode (a recycled row may still
+    // carry a compact stamp from a chat).
+    if (userSettings.hoverMode === "inline" && !getConversationIdFromHref(link.getAttribute("href"))) {
+      removeInlineTimestamp(el);
+      return;
+    }
 
     const row = { el, isStarred, dates };
     rows.push(row);
@@ -1127,6 +1135,9 @@ inlineSidebarStyle.textContent = `
   white-space: nowrap;
 }
 [data-timestamp-inline-row] {
+  /* Anchor the date to the row, as the two-line modes do, even where the
+     chat link is its own row. */
+  position: relative;
   padding-inline-end: calc(var(--timestamp-inline-width,32px) + 12px) !important;
 }
 /* ChatGPT's chat actions keep their native place at the row end. While they
@@ -1211,20 +1222,28 @@ function measureInlineTimestamp(stamp) {
   return {
     "--timestamp-inline-width": width(stamp.querySelector(".timestamp-inline-primary")) + starWidth,
     "--timestamp-inline-detail-width": width(stamp.querySelector(".timestamp-inline-secondary")) + starWidth,
-    "--timestamp-inline-actions": actions ? width(actions) : 0,
+    // ChatGPT keeps the actions laid out (transparent) at rest; if they ever
+    // report no width, assume its 56px trailing spacer.
+    "--timestamp-inline-actions": actions ? width(actions) || 56 : 0,
   };
 }
 
 function renderInlineTimestamp({el, primaryText, secondaryText, isStarred}, style) {
+  // Neither selected source has a date (e.g. an update-only chat with both
+  // set to created): leave the row native rather than reserve empty space.
+  if (!primaryText && !secondaryText) {
+    removeInlineTimestamp(el);
+    return;
+  }
   const link = el.matches("a") ? el : el.querySelector('a[href*="/c/"],a[href*="/gg/"]');
   if (!link) return;
   let container = link.querySelector(":scope > .timestamp-inline-container");
   const differentSource = userSettings.displayMode !== userSettings.hoverDetailSource;
   // Appearance colors and bold apply here too; the faint look comes from the
   // stylesheet's opacity, which the popup preview mirrors.
-  const { primaryColor, fontWeight } = style;
+  const { primaryColor, fontWeight, starColor } = style;
   const detailColor = differentSource ? style.secondaryColor : primaryColor;
-  const state = JSON.stringify([primaryText, secondaryText, isStarred, primaryColor, detailColor, fontWeight, differentSource]);
+  const state = JSON.stringify([primaryText, secondaryText, isStarred, primaryColor, detailColor, fontWeight, starColor, differentSource]);
   // The layout hooks are data attributes, not classes: ChatGPT rewrites a
   // row's class names when it re-renders (e.g. after its menu closes), but
   // leaves attributes it doesn't own alone. Re-mark rows that lost them.
@@ -1257,7 +1276,9 @@ function renderInlineTimestamp({el, primaryText, secondaryText, isStarred}, styl
   detail.textContent = secondaryText || "";
   detail.style.color = detailColor;
   detail.dataset.differentSource = String(differentSource);
-  container.querySelector(".timestamp-inline-star").style.display = isStarred ? "" : "none";
+  const star = container.querySelector(".timestamp-inline-star");
+  star.style.display = isStarred ? "" : "none";
+  star.style.color = starColor;
   el.dataset.timestampAdded = "true";
   inlineWidthQueue.add(container);
   renderedState.set(container, state);

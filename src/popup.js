@@ -275,7 +275,8 @@ function updatePreview() {
   if (hoverMode === "inline") {
     const dates = { created: createdDate, updated: updatedDate };
     previewPrimary.textContent = formatCompactDate(dates[displayMode], inlineDateFormatSelect.value, format);
-    previewSecondary.textContent = t("previewHover", [formatCompactDate(dates[hoverDetailSourceSelect.value], hoverDetailFormatSelect.value, format)]);
+    const detailText = formatCompactDate(dates[hoverDetailSourceSelect.value], hoverDetailFormatSelect.value, format);
+    previewSecondary.textContent = t("previewHover", [detailText]) || `(hover: ${detailText})`;
   } else if (displayMode === "updated") {
     previewPrimary.textContent = updatedText;
     previewSecondary.textContent = hoverActive
