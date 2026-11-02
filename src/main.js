@@ -27,6 +27,9 @@ let userSettings = {
   dateFormat: "locale",
   displayMode: "created",
   hoverMode: "swap",
+  hoverDetailSource: "created",
+  inlineDateFormat: "date",
+  hoverDetailFormat: "fullDate",
   chatTimestampEnabled: true,
   chatTimestampPosition: "center",
   sidebarFilterMode: "all",
@@ -802,6 +805,20 @@ function setHoverExpanded(el, expanded) {
 
 // #region Sidebar
 function addSidebarTimestampsFiber() {
+  if (userSettings.hoverMode === "inline") {
+    // Compact mode leaves project folders and Spaces rows native, so drop the
+    // two-line stamps they got in the other modes. A project folder link can
+    // be its own row, so check the link's href rather than whether one exists.
+    document.querySelectorAll(".timestamp-stack-container").forEach(stamp => {
+      const el = stamp.parentElement;
+      const link = el.matches("a") ? el : el.querySelector('a[href*="/c/"],a[href*="/gg/"]');
+      if (!getConversationIdFromHref(link?.getAttribute("href"))) { stamp.remove(); restoreNativeRow(el); }
+    });
+  } else {
+    // Leaving compact mode: clear every compact stamp, including rows the
+    // two-line modes skip (update-only chats, project folders).
+    document.querySelectorAll("[data-timestamp-inline-row]").forEach(removeInlineTimestamp);
+  }
   const isDark = isDarkTheme();
   const starredIds = normalizeStarredIdSet(userSettings.starredIds);
   const links = getSidebarLinks();
@@ -843,14 +860,17 @@ function addSidebarTimestampsFiber() {
 
     // Get timestamps from conversation, gizmo, or group chat room
     let createdText, updatedText;
+    const dates = { created: conversation?.create_time, updated: conversation?.update_time };
     if (conversation?.create_time) {
       createdText = formatTimestamp(conversation.create_time);
       updatedText = formatTimestamp(conversation.update_time);
     } else if (room) {
       // Rooms whose history isn't loaded expose no creation time; fall back
       // to last activity rather than showing nothing (or a bogus date).
-      updatedText = formatTimestamp(readSignal(room, "updatedAt$"));
-      createdText = formatTimestamp(getGroupRoomCreatedAt(room)) || updatedText;
+      dates.created = getGroupRoomCreatedAt(room);
+      dates.updated = readSignal(room, "updatedAt$");
+      updatedText = formatTimestamp(dates.updated);
+      createdText = formatTimestamp(dates.created) || updatedText;
     }
     if (showBookmarks && isStarred) {
       knownChats.set(conversationId, {
@@ -858,12 +878,23 @@ function addSidebarTimestampsFiber() {
         title: findFirstTitleText(link) || conversation?.title,
         createdText,
         updatedText,
+        dates,
       });
     }
     // Recents is hidden while the Bookmarks section stands in for it.
-    if (!createdText || (showBookmarks && recents.contains(link))) return;
+    if (!createdText && !(userSettings.hoverMode === "inline" && dates.updated)) {
+      if (userSettings.hoverMode === "inline") removeInlineTimestamp(el);
+      return;
+    }
+    if (showBookmarks && recents.contains(link)) return;
+    // Keep project folders native in compact mode (a recycled row may still
+    // carry a compact stamp from a chat).
+    if (userSettings.hoverMode === "inline" && !getConversationIdFromHref(link.getAttribute("href"))) {
+      removeInlineTimestamp(el);
+      return;
+    }
 
-    const row = { el, isStarred };
+    const row = { el, isStarred, dates };
     rows.push(row);
     setSidebarRowText(row, createdText, updatedText);
 
@@ -887,6 +918,7 @@ function addSidebarTimestampsFiber() {
     const record = getSpacesRowMetadata(el);
     const createdText = formatTimestamp(record?.create_time);
     if (!createdText) return;
+    if (userSettings.hoverMode === "inline") return;
     const row = { el, isStarred: false, leftOffset: "36px" };
     setSidebarRowText(row, createdText, formatTimestamp(record.update_time));
     rows.push(row);
@@ -894,11 +926,30 @@ function addSidebarTimestampsFiber() {
 
   rows.push(...updateBookmarksSection(showBookmarks, recents, knownChats));
   rows.forEach((row) => renderSidebarTimestamp(row, style));
+  // Finish all text writes before measuring the inline columns. Read widths
+  // as one batch, then reserve their space without a layout per changed row.
+  const widths = [...inlineWidthQueue].filter(stamp => stamp.isConnected)
+    .map(stamp => [stamp, measureInlineTimestamp(stamp)]);
+  inlineWidthQueue.clear();
+  widths.forEach(([stamp, sizes]) => {
+    // A hidden sidebar has no layout yet. Measure again on a later refresh
+    // instead of reserving 0px, which would put the date over the title.
+    if (!sizes) {
+      inlineWidthQueue.add(stamp);
+      return;
+    }
+    const el = stamp.closest("[data-timestamp-inline-row]");
+    if (!el) return;
+    for (const [name, width] of Object.entries(sizes)) {
+      const value = `${width}px`;
+      if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+    }
+  });
 
   // Titles only settle once the writes above make rows height: auto, so new
   // rows are measured afterwards (one layout for the batch) and re-anchored
   // before the browser paints.
-  const unmeasured = rows.filter((row) => !sidebarStampLayout.has(row.el));
+  const unmeasured = rows.filter((row) => userSettings.hoverMode !== "inline" && !sidebarStampLayout.has(row.el));
   unmeasured.forEach((row) => measureSidebarStamp(row.el));
   unmeasured.forEach((row) => {
     if (sidebarStampLayout.has(row.el)) renderSidebarTimestamp(row, style);
@@ -942,6 +993,7 @@ function updateBookmarksSection(show, recents, knownChats) {
         active: bookmark.id === currentId,
         createdText: known?.createdText,
         updatedText: known?.updatedText,
+        dates: known?.dates,
       };
     });
   const state = JSON.stringify([
@@ -955,9 +1007,9 @@ function updateBookmarksSection(show, recents, knownChats) {
   }
 
   return items
-    .filter((item) => item.createdText)
+    .filter((item) => item.createdText || (userSettings.hoverMode === "inline" && item.dates?.updated))
     .map((item) => {
-      const row = { el: bookmarkRows.get(item.id), isStarred: false, leftOffset: "10px" };
+      const row = { el: bookmarkRows.get(item.id), isStarred: false, leftOffset: "10px", dates: item.dates };
       setSidebarRowText(row, item.createdText, item.updatedText);
       return row;
     });
@@ -1032,7 +1084,212 @@ function openBookmarkInPlace(event) {
   router.navigate(link.getAttribute("href"));
 }
 
+// Preserve native sizing when switching from the existing two-line modes.
+const nativeSidebarStyles = new WeakMap();
+const inlineWidthQueue = new Set();
+function rememberNativeRow(el) {
+  if (!nativeSidebarStyles.has(el)) nativeSidebarStyles.set(el, el.getAttribute("style"));
+}
+function restoreNativeRow(el) {
+  const style = nativeSidebarStyles.get(el);
+  if (style == null) el.removeAttribute("style");
+  else el.setAttribute("style", style);
+}
+function removeInlineTimestamp(el) {
+  if (!el.hasAttribute("data-timestamp-inline-row")) return;
+  el.querySelectorAll(".timestamp-inline-container").forEach(node => node.remove());
+  el.querySelectorAll("[data-timestamp-inline-link]").forEach(node => node.removeAttribute("data-timestamp-inline-link"));
+  el.removeAttribute("data-timestamp-inline-link");
+  el.removeAttribute("data-timestamp-inline-row");
+  restoreNativeRow(el);
+}
+const inlineSidebarStyle = document.createElement("style");
+inlineSidebarStyle.textContent = `
+[data-timestamp-inline-link] {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-width: 0 !important;
+}
+[data-timestamp-inline-link] [data-thread-title],
+[data-timestamp-inline-link] > .truncate {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  flex: 1;
+}
+[data-timestamp-inline-link] [data-thread-title] > * > *,
+[data-timestamp-inline-link] [data-thread-title] [data-marquee-content] {
+  transform: none !important;
+  animation: none !important;
+  max-width: 100%;
+  width: 100%;
+}
+[data-timestamp-inline-link] [data-thread-title] [data-marquee-content] {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+[data-timestamp-inline-link] [data-thread-title]:not(:has([data-marquee-content])) {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-timestamp-inline-row] {
+  /* Anchor the date to the row, as the two-line modes do, even where the
+     chat link is its own row. */
+  position: relative;
+  padding-inline-end: calc(var(--timestamp-inline-width,32px) + 12px) !important;
+}
+/* ChatGPT's chat actions keep their native place at the row end. While they
+   show (hover, keyboard focus), the hover detail moves just before them and
+   the title makes room for it; the native spacer already makes room for the
+   actions themselves. */
+[data-timestamp-inline-row]:is(:hover,:focus-visible,:has(:focus-visible)) {
+  padding-inline-end: calc(var(--timestamp-inline-detail-width,64px) + 12px) !important;
+}
+[data-timestamp-inline-row]:is(:hover,:focus-visible,:has(:focus-visible)) .timestamp-inline-container {
+  inset-inline-end: max(10px, calc(var(--timestamp-inline-actions,0px) + 8px));
+}
+/* An open chat menu keeps the actions on screen after the pointer leaves. */
+[data-timestamp-inline-row]:has([aria-expanded="true"]) .timestamp-inline-container {
+  opacity: 0;
+}
+.timestamp-inline-container {
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  align-items: center;
+  text-align: end;
+  gap: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  font: 10px/1.2 system-ui;
+  color: inherit;
+}
+.timestamp-inline-primary,.timestamp-inline-secondary {
+  grid-area: 1/1;
+  justify-self: end;
+}
+.timestamp-inline-primary {
+  opacity: .35;
+}
+.timestamp-inline-secondary {
+  visibility: hidden;
+  opacity: .48;
+  font-size: 9px;
+}
+.timestamp-inline-secondary[data-different-source="true"] {
+  opacity: .75;
+}
+[data-timestamp-inline-row]:is(:hover,:focus-visible,:has(:focus-visible)) .timestamp-inline-primary {
+  visibility: hidden;
+}
+[data-timestamp-inline-row]:is(:hover,:focus-visible,:has(:focus-visible)) .timestamp-inline-secondary {
+  visibility: visible;
+}
+.timestamp-inline-star {
+  grid-area: 1/2;
+  width: 10px;
+  height: 10px;
+  color: #b8860b;
+  display: inline-flex;
+}
+.timestamp-inline-star svg {
+  width: 100%;
+  height: 100%;
+}
+`;
+document.head.append(inlineSidebarStyle);
+
+// ChatGPT's hover actions (menu, pin): the child of the row's display:
+// contents wrapper that holds the buttons.
+function getInlineRowActions(row) {
+  const contents = row?.querySelector(":scope > .contents");
+  return contents && [...contents.children].find((child) => child.querySelector("button"));
+}
+
+// Widths of a compact stamp's resting date and hover detail (each with the
+// star), and of the native actions the detail sits beside. Null while the
+// stamp has no layout box (hidden sidebar).
+function measureInlineTimestamp(stamp) {
+  if (!stamp.getBoundingClientRect().width) return null;
+  const width = (el) => Math.ceil(el.getBoundingClientRect().width);
+  const star = stamp.querySelector(".timestamp-inline-star");
+  const starWidth = star.style.display === "none" ? 0 : width(star) + 3;
+  const actions = getInlineRowActions(stamp.closest("[data-timestamp-inline-row]"));
+  return {
+    "--timestamp-inline-width": width(stamp.querySelector(".timestamp-inline-primary")) + starWidth,
+    "--timestamp-inline-detail-width": width(stamp.querySelector(".timestamp-inline-secondary")) + starWidth,
+    // ChatGPT keeps the actions laid out (transparent) at rest; if they ever
+    // report no width, assume its 56px trailing spacer.
+    "--timestamp-inline-actions": actions ? width(actions) || 56 : 0,
+  };
+}
+
+function renderInlineTimestamp({el, primaryText, secondaryText, isStarred}, style) {
+  // Neither selected source has a date (e.g. an update-only chat with both
+  // set to created): leave the row native rather than reserve empty space.
+  if (!primaryText && !secondaryText) {
+    removeInlineTimestamp(el);
+    return;
+  }
+  const link = el.matches("a") ? el : el.querySelector('a[href*="/c/"],a[href*="/gg/"]');
+  if (!link) return;
+  let container = link.querySelector(":scope > .timestamp-inline-container");
+  const differentSource = userSettings.displayMode !== userSettings.hoverDetailSource;
+  // Appearance colors and bold apply here too; the faint look comes from the
+  // stylesheet's opacity, which the popup preview mirrors.
+  const { primaryColor, fontWeight, starColor } = style;
+  const detailColor = differentSource ? style.secondaryColor : primaryColor;
+  const state = JSON.stringify([primaryText, secondaryText, isStarred, primaryColor, detailColor, fontWeight, starColor, differentSource]);
+  // The layout hooks are data attributes, not classes: ChatGPT rewrites a
+  // row's class names when it re-renders (e.g. after its menu closes), but
+  // leaves attributes it doesn't own alone. Re-mark rows that lost them.
+  const marked = el.hasAttribute("data-timestamp-inline-row") && link.hasAttribute("data-timestamp-inline-link");
+  if (container && marked && renderedState.get(container) === state) return;
+  el.setAttribute("data-timestamp-inline-row", "");
+  link.setAttribute("data-timestamp-inline-link", "");
+  if (!container) {
+    el.querySelector(":scope > .timestamp-stack-container")?.remove();
+    restoreNativeRow(el);
+    sidebarStampLayout.delete(el);
+    container = document.createElement("span");
+    container.className = "timestamp-inline-container";
+    container.setAttribute("aria-hidden", "true");
+    const primary = document.createElement("span");
+    primary.className = "timestamp-inline-primary";
+    const secondary = document.createElement("span");
+    secondary.className = "timestamp-inline-secondary";
+    const star = document.createElement("span");
+    star.className = "timestamp-inline-star";
+    star.innerHTML = STAR_ICON_SVG;
+    container.append(primary, secondary, star);
+    link.append(container);
+  }
+  container.style.fontWeight = fontWeight;
+  const primary = container.querySelector(".timestamp-inline-primary");
+  primary.textContent = primaryText || "";
+  primary.style.color = primaryColor;
+  const detail = container.querySelector(".timestamp-inline-secondary");
+  detail.textContent = secondaryText || "";
+  detail.style.color = detailColor;
+  detail.dataset.differentSource = String(differentSource);
+  const star = container.querySelector(".timestamp-inline-star");
+  star.style.display = isStarred ? "" : "none";
+  star.style.color = starColor;
+  el.dataset.timestampAdded = "true";
+  inlineWidthQueue.add(container);
+  renderedState.set(container, state);
+}
+
 function setSidebarRowText(row, createdText, updatedText) {
+  if (userSettings.hoverMode === "inline") {
+    row.primaryText = formatCompactDate(row.dates?.[userSettings.displayMode], userSettings.inlineDateFormat, userSettings.dateFormat);
+    row.secondaryText = formatCompactDate(row.dates?.[userSettings.hoverDetailSource], userSettings.hoverDetailFormat, userSettings.dateFormat);
+    return;
+  }
   const hoverActive = userSettings.hoverMode !== "disabled";
   if (userSettings.displayMode === "updated") {
     // Show updated time by default, created on hover
@@ -1046,6 +1303,12 @@ function setSidebarRowText(row, createdText, updatedText) {
 }
 
 function renderSidebarTimestamp(row, style) {
+  rememberNativeRow(row.el);
+  if (style.hoverMode === "inline") {
+    renderInlineTimestamp(row, style);
+    return;
+  }
+  removeInlineTimestamp(row.el);
   const { el, primaryText, secondaryText, isStarred, leftOffset } = row;
   const { primaryColor, secondaryColor, starColor, fontWeight, hoverMode } =
     style;

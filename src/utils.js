@@ -145,3 +145,21 @@ function formatDate(date, format) {
       return date.toLocaleString().replace(",", "");
   }
 }
+
+// Compact sidebar formats are local, 24-hour, minute precision. Other modes
+// and message timestamps continue using the existing date format setting.
+function formatCompactDate(value, format, existingFormat = "locale") {
+  if (value == null || value === "") return "";
+  const numeric = typeof value === "number" || /^\d+(\.\d+)?$/.test(value);
+  const number = numeric ? Number(value) : null;
+  const date = new Date(numeric ? (number < 1e12 ? number * 1000 : number) : value);
+  if (Number.isNaN(date.getTime())) return "";
+  if (format === "inherit") return formatDate(date, existingFormat);
+  const pad = n => String(n).padStart(2, "0");
+  const day = pad(date.getMonth() + 1) + "/" + pad(date.getDate());
+  const time = pad(date.getHours()) + ":" + pad(date.getMinutes());
+  if (format === "fullDate") return date.getFullYear() + "/" + day;
+  if (format === "time") return time;
+  if (format === "datetime") return date.getFullYear() + "/" + day + " " + time;
+  return day;
+}

@@ -425,5 +425,35 @@
         "content": "$1"
       }
     }
+  },
+  "optionHoverInline": {
+    "message": "Compact inline (hover details)"
+  },
+  "labelHoverDetailSource": {
+    "message": "Hover time source"
+  },
+  "labelInlineDateFormat": {
+    "message": "Default sidebar format"
+  },
+  "labelHoverDetailFormat": {
+    "message": "Hover detail format"
+  },
+  "optionInlineDate": {
+    "message": "Date only (11/01)"
+  },
+  "optionInlineTime": {
+    "message": "Time only (13:13)"
+  },
+  "optionInlineDateTime": {
+    "message": "Date + time (2026/11/01 13:13)"
+  },
+  "optionInlineInherit": {
+    "message": "Use existing date format"
+  },
+  "inlineHelp": {
+    "message": "Compact mode keeps the native row height. Display selects the default time source. Hover details have their own source and format. Updated means the conversation’s last modification, not necessarily the last assistant reply."
+  },
+  "optionInlineFullDate": {
+    "message": "Full date (2026/11/01)"
   }
 }
