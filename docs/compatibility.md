@@ -71,11 +71,22 @@ selects the default source. `hoverDetailSource`, `inlineDateFormat`, and
 `hoverDetailFormat` configure the other source and the independent formats.
 Legacy modes and the global message date format keep their existing behavior.
 
-Keep the native title and action nodes. The injected column shares a grid cell
-between default and hover text, so it reserves the larger width without changing
-row height. Text writes finish before a batch of column-width reads and padding
-writes. Unchanged states do not mutate DOM or measure layout. Hover/focus visibility
-uses CSS, so a scroll or recycled row cannot leave a detached tooltip behind.
+Keep the native title and action nodes, and never move or restyle the actions
+(menu, pin): they stay at the row end where ChatGPT puts them. At rest the date
+sits at the row end and the row reserves only its width. While the actions show
+(hover or keyboard focus, the same triggers ChatGPT uses), the hover detail moves
+just before them and the row reserves the detail's width; ChatGPT's own spacer
+already makes room for the actions. With a chat menu open the date is hidden.
+Text writes finish before a batch of width reads (date, detail, actions) and
+padding writes. A stamp in a hidden sidebar has no width yet and is measured on
+a later refresh. Unchanged states do not mutate DOM or measure layout.
+Hover/focus visibility uses CSS, so a scroll or recycled row cannot leave a
+detached tooltip behind.
+
+Rows and links are marked with `data-timestamp-inline-*` attributes, not
+classes: ChatGPT rewrites a row's class names when it re-renders (for example
+after its menu closes), but leaves attributes it does not own alone. A row that
+loses its marker anyway is marked again on the next refresh.
 
 The row's native inline styles are saved before stamping and restored across mode
 switches. Compact mode skips project folders and Spaces rows; project conversation

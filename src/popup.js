@@ -316,20 +316,28 @@ function updateAppearancePreview() {
   const sidebarWeight = boldSidebarCheckbox.checked ? "600" : "400";
   const chatWeight = boldChatCheckbox.checked ? "600" : "400";
 
+  // Compact mode draws faint dates, and its hover detail keeps the primary
+  // color when it shows the same source; mirror both so the preview matches.
+  const sameSource = displayModeSelect.value === hoverDetailSourceSelect.value;
+  const detailKind = compact && sameSource ? "Primary" : "Secondary";
+  const primaryOpacity = compact ? "0.35" : "";
+  const detailOpacity = compact ? (sameSource ? "0.48" : "0.75") : "";
+
   const samples = [
-    ["apLightSidebarPrimary", "colorSidebarPrimaryLight", primaryText, sidebarWeight],
-    ["apLightSidebarSecondary", "colorSidebarSecondaryLight", secondaryText, sidebarWeight],
-    ["apLightChat", "colorChatLight", chatText, chatWeight],
-    ["apDarkSidebarPrimary", "colorSidebarPrimaryDark", primaryText, sidebarWeight],
-    ["apDarkSidebarSecondary", "colorSidebarSecondaryDark", secondaryText, sidebarWeight],
-    ["apDarkChat", "colorChatDark", chatText, chatWeight],
+    ["apLightSidebarPrimary", "colorSidebarPrimaryLight", primaryText, sidebarWeight, primaryOpacity],
+    ["apLightSidebarSecondary", `colorSidebar${detailKind}Light`, secondaryText, sidebarWeight, detailOpacity],
+    ["apLightChat", "colorChatLight", chatText, chatWeight, ""],
+    ["apDarkSidebarPrimary", "colorSidebarPrimaryDark", primaryText, sidebarWeight, primaryOpacity],
+    ["apDarkSidebarSecondary", `colorSidebar${detailKind}Dark`, secondaryText, sidebarWeight, detailOpacity],
+    ["apDarkChat", "colorChatDark", chatText, chatWeight, ""],
   ];
-  for (const [elId, colorKey, text, weight] of samples) {
+  for (const [elId, colorKey, text, weight, opacity] of samples) {
     const el = document.getElementById(elId);
     if (!el) continue;
     el.textContent = text;
     el.style.color = colorInputs[colorKey]?.value || defaultColors[colorKey];
     el.style.fontWeight = weight;
+    el.style.opacity = opacity;
   }
 
   // Mirror the chat timestamp position setting in the chat section.

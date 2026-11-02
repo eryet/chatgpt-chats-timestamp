@@ -873,10 +873,13 @@ test("compact hover hue follows independent sources and refreshes on theme or co
   window.eval('userSettings.colorSidebarSecondaryDark="#6495ed"');
   window.addSidebarTimestampsFiber();
   assert.equal(detail.style.color, "rgb(100, 149, 237)");
-  window.eval('userSettings.hoverDetailSource="updated"');
+  // Same source: the detail keeps the primary color, and Appearance applies.
+  window.eval('userSettings.hoverDetailSource="updated";userSettings.boldSidebarTimestamp=true');
   window.addSidebarTimestampsFiber();
   assert.equal(detail.dataset.differentSource, "false");
-  assert.equal(detail.style.color, "inherit");
+  assert.equal(detail.style.color, "rgb(227, 227, 227)");
+  assert.equal(window.document.querySelector(".timestamp-inline-primary").style.color, "rgb(227, 227, 227)");
+  assert.equal(window.document.querySelector(".timestamp-inline-container").style.fontWeight, "600");
   window.eval('userSettings.displayMode="created"');
   window.addSidebarTimestampsFiber();
   assert.equal(detail.dataset.differentSource, "true");
@@ -894,8 +897,11 @@ test("compact widths are measured after all changed rows have been written", () 
   attach(second.querySelector("a"), {conversation:{
     id:"chat-2",create_time:1790683200,update_time:"2026-09-30T00:00:00Z"
   }});
+  // ChatGPT's hover actions: a button group inside a display: contents wrapper.
+  first.insertAdjacentHTML("beforeend", '<div class="contents"><div class="test-actions"><button></button></div></div>');
   window.eval('userSettings.hoverMode="inline"');
   let reads = 0;
+  const widths = {"timestamp-inline-primary": 40, "timestamp-inline-secondary": 50, "test-actions": 48};
   const original = window.HTMLElement.prototype.getBoundingClientRect;
   window.HTMLElement.prototype.getBoundingClientRect = function () {
     if (this.classList.contains("timestamp-inline-container")) {
@@ -903,13 +909,62 @@ test("compact widths are measured after all changed rows have been written", () 
       assert.equal(window.document.querySelectorAll(".timestamp-inline-container").length, 2);
       return {width:52};
     }
-    return original.call(this);
+    const name = Object.keys(widths).find((key) => this.classList.contains(key));
+    return name ? {width: widths[name]} : original.call(this);
   };
   window.addSidebarTimestampsFiber();
   assert.equal(reads, 2);
-  assert.equal(first.style.getPropertyValue("--timestamp-inline-width"), "52px");
-  assert.equal(second.style.getPropertyValue("--timestamp-inline-width"), "52px");
+  // The resting date and the hover detail reserve their own widths, and the
+  // detail is placed before the native actions, which keep their position.
+  assert.equal(first.style.getPropertyValue("--timestamp-inline-width"), "40px");
+  assert.equal(first.style.getPropertyValue("--timestamp-inline-detail-width"), "50px");
+  assert.equal(first.style.getPropertyValue("--timestamp-inline-actions"), "48px");
+  assert.equal(second.style.getPropertyValue("--timestamp-inline-width"), "40px");
+  assert.equal(second.style.getPropertyValue("--timestamp-inline-actions"), "0px");
+  assert.equal(first.querySelector(".test-actions").getAttribute("style"), null);
   window.addSidebarTimestampsFiber();
   assert.equal(reads, 2);
+  window.close();
+});
+
+test("compact rows keep their layout hooks through ChatGPT re-renders", () => {
+  const window = modernPage();
+  window.eval('userSettings.hoverMode="inline"');
+  window.addSidebarTimestampsFiber();
+  const row = window.document.querySelector(".sidebar-item");
+  const link = row.querySelector("a");
+  // React rewrites class names on re-render; the hooks are attributes.
+  row.className = "sidebar-item rerendered";
+  link.className = "rerendered";
+  assert.ok(row.hasAttribute("data-timestamp-inline-row"));
+  assert.ok(link.hasAttribute("data-timestamp-inline-link"));
+  // A lost hook is restored on the next refresh even though the text is unchanged.
+  row.removeAttribute("data-timestamp-inline-row");
+  window.addSidebarTimestampsFiber();
+  assert.ok(row.hasAttribute("data-timestamp-inline-row"));
+  assert.equal(row.querySelectorAll(".timestamp-inline-container").length, 1);
+  window.eval('userSettings.hoverMode="classic"');
+  window.addSidebarTimestampsFiber();
+  assert.ok(!row.hasAttribute("data-timestamp-inline-row"));
+  assert.ok(!link.hasAttribute("data-timestamp-inline-link"));
+  window.close();
+});
+
+test("compact widths read while the sidebar is hidden are measured again later", () => {
+  const window = modernPage();
+  window.eval('userSettings.hoverMode="inline"');
+  const row = window.document.querySelector(".sidebar-item");
+  let width = 0;
+  const original = window.HTMLElement.prototype.getBoundingClientRect;
+  window.HTMLElement.prototype.getBoundingClientRect = function () {
+    if (this.classList.contains("timestamp-inline-container")) return {width};
+    if (this.classList.contains("timestamp-inline-primary")) return {width: width && 40};
+    return original.call(this);
+  };
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.style.getPropertyValue("--timestamp-inline-width"), "");
+  width = 52;
+  window.addSidebarTimestampsFiber();
+  assert.equal(row.style.getPropertyValue("--timestamp-inline-width"), "40px");
   window.close();
 });

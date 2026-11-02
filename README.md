@@ -23,7 +23,7 @@ Every chat in the sidebar shows when it was created. Hover a chat to see when it
 - **Swap**: the timestamp slides to the other time
 - **Classic**: the other time appears below
 - **Disabled**: no hover change
-- **Compact inline**: a faint date at the right of the native-height row; hover or focus shows configurable details. Native chat actions remain immediately to the left of the date.
+- **Compact inline**: a faint date at the right of the native-height row; hover or focus shows configurable details. ChatGPT's chat actions (menu, pin) stay where they normally are; the hover details appear just before them.
 
 Compact mode is opt-in; existing saved hover modes stay unchanged. **Display** selects the default time source, while **Hover time source** independently selects created or updated time. Both states have their own format: short date, full date, time, date + time, or the existing global format. For example, show the last-updated `11/01` normally and the creation date `2026/09/18` on hover. Built-in compact formats use local time, a 24-hour clock, and no seconds; “Use existing date format” preserves that format's behavior (including UTC for ISO).
 
